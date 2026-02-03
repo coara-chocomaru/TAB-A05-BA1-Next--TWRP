@@ -13,9 +13,6 @@ BOARD_SUPPRESS_SECURE_ERASE := true
 #USE_XML_AUDIO_POLICY_CONF := 1
 #BOARD_USES_MTK_AUDIO := true
 
-#wifi
-#BOARD_WLAN_DEVICE := MediaTek
-
 # HAL
 #TARGET_USES_HWC2 := true
 #TARGET_USES_HWC2ON1ADAPTER := false
@@ -90,18 +87,10 @@ TARGET_NO_RADIOIMAGE := true
 TARGET_NO_BOOTLOADER := true
 TARGET_NO_FACTORYIMAGE:=true
 
-#
-#BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2 androidboot.selinux=permissive
-
 # Kernel
 BOARD_BOOTIMG_HEADER_VERSION := 1
 BOARD_KERNEL_BASE := 0x40078000
-BOARD_KERNEL_CMDLINE += "bootopt=64S3,32N2,64N2"
-BOARD_KERNEL_CMDLINE += "androidboot.selinux=permissive"
-BOARD_KERNEL_CMDLINE += "androidboot.atm=disabled"
-BOARD_KERNEL_CMDLINE += "androidboot.meta_log_disable=0"
-BOARD_KERNEL_CMDLINE += "androidboot.dtbo_idx=0"
-
+BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2 androidboot.selinux=permissive
 BOARD_KERNEL_PAGESIZE := 2048
 BOARD_RAMDISK_OFFSET := 0x14f88000
 BOARD_KERNEL_TAGS_OFFSET := 0x13f88000
@@ -168,8 +157,7 @@ RECOVERY_SDCARD_ON_DATA := true
 TW_INCLUDE_CRYPTO := true
 
 # TWRP Configuration
-TW_THEME := landscape_hdpi
-TW_ROTATION := 270
+TW_THEME := portrait_hdpi
 TW_EXTRA_LANGUAGES := false
 TW_DEFAULT_LANGUAGE := ja
 TW_SCREEN_BLANK_ON_BOOT := true
@@ -182,7 +170,8 @@ TW_EXCLUDE_SUPERSU := true
 TW_EXCLUDE_TWRPAPP := true
 TW_EXCLUDE_PYTHON := true
 TW_DEVICE_VERSION := $(shell date -u +" %F")
-RECOVERY_TOUCHSCREEN_SWAP_Y := true
-RECOVERY_TOUCHSCREEN_FLIP_XY := true
+RECOVERY_TOUCHSCREEN_SWAP_XY := true
+RECOVERY_TOUCHSCREEN_FLIP_Y := true
+
 #include vendor/sts/a05ba/BoardConfigVendor.mk
 

@@ -1,4 +1,5 @@
 # Android device tree for benesse a05ba (a05ba)
+
 [a05baのtwrpの元そーす](https://github.com/Maitani-Sakura/android_device_sts-tottori_a05ba)
 チャレンジパッドnext用TWRPデバイスツリーです。
 ```
