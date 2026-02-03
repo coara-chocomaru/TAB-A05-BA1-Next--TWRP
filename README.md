@@ -1,7 +1,7 @@
 # Android device tree for benesse a05ba
 ## TAB-A05-BA1(next)用の簡易的なTWRPデバイスツリーです
 [a05baのtwrpの元そーす](https://github.com/Maitani-Sakura/android_device_sts-tottori_a05ba)
-
+#### bootable/recoveryはsource内に上書きしてください
 ### (kernelソース)https://github.com/coara-chocomaru/mt8168_a05ba_kernel
 ```
 #
