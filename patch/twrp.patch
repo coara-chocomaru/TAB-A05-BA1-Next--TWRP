@@ -1,1 +1,38 @@
-
+--- twrp.cpp.bak	2026-02-04 07:14:09.939706072 +0000
++++ twrp.cpp	2026-02-04 07:14:09.939706072 +0000
+@@ -1,4 +1,7 @@
+ /*
++#include <string>
++#include <cstdlib>
++#include <cerrno>
+ 		TWRP is free software: you can redistribute it and/or modify
+ 		it under the terms of the GNU General Public License as published by
+ 		the Free Software Foundation, either version 3 of the License, or
+@@ -287,11 +290,27 @@
+ 			}
+ 		}
+ 		printf("\n");
++    PartitionManager.Mount_By_Path("/data", true); 
++    TWPartition* data = PartitionManager.Find_Partition_By_Path("/data"); 
++    if (data && !data->Is_Mounted()) { 
++        gui_print("Boot-time /data mount failed (Invalid argument). Forcing format...\n"); 
++        PartitionManager.Format_Data(); 
++        PartitionManager.Wipe_By_Path("/data"); 
++        PartitionManager.Mount_By_Path("/data", true); 
++    }
+ 	}
+ 
+ 	if (crash_counter == 0) {
+ 		property_list(Print_Prop, NULL);
+ 		printf("\n");
++    PartitionManager.Mount_By_Path("/data", true); 
++    TWPartition* data = PartitionManager.Find_Partition_By_Path("/data"); 
++    if (data && !data->Is_Mounted()) { 
++        gui_print("Boot-time /data mount failed (Invalid argument). Forcing format...\n"); 
++        PartitionManager.Format_Data(); 
++        PartitionManager.Wipe_By_Path("/data"); 
++        PartitionManager.Mount_By_Path("/data", true); 
++    }
+ 	} else {
+ 		printf("twrp.crash_counter=%d\n", crash_counter);
+ 	}

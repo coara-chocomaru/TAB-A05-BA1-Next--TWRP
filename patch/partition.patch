@@ -1,0 +1,10 @@
+--- partition.cpp.bak	2026-02-04 07:14:09.939706072 +0000
++++ partition.cpp	2026-02-04 07:14:09.938706082 +0000
+@@ -1,4 +1,7 @@
+ /*
++#include <string>
++#include <cstdlib>
++#include <cerrno>
+ 	Copyright 2013 to 2020 TeamWin
+ 	This file is part of TWRP/TeamWin Recovery Project.
+ 

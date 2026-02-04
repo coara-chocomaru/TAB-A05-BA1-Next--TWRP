@@ -1,0 +1,9 @@
+--- openrecoveryscript.cpp.bak	2026-02-04 07:14:09.938706082 +0000
++++ openrecoveryscript.cpp	2026-02-04 07:14:09.938706082 +0000
+@@ -1,4 +1,6 @@
+ /*
++#include <string>
++#include <cerrno>
+ 	Copyright 2003 to 2017 TeamWin
+ 	This file is part of TWRP/TeamWin Recovery Project.
+ 
