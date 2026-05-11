@@ -58,9 +58,8 @@ jobs:
             libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 lzop pngcrush \
             schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp \
             qemu-user-static libstdc++-10-dev libncurses5 python3 libtinfo5 \
-            openssl python2.7 git wget xxd python3-cryptography zip curl \
-            python3-pycryptodome
-            
+            openssl python2.7 git wget xxd zip curl
+      
       - name: Install OpenJDK
         uses: actions/setup-java@v3
         with:
@@ -114,6 +113,13 @@ jobs:
           sudo apt -y install python2
           sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
           python --version
+
+      - name: Install pycryptodome for Python 2
+        run: |
+          python --version
+          python -m pip install --upgrade pip
+          python -m pip install pycryptodome
+          python -m pip install cryptography
 
       - name: Buildi
         working-directory: ${{ steps.pwd.outputs.workspace-folder }}
