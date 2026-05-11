@@ -190,7 +190,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp boot.img signed/sd_boot.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/boot.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_boot.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/sd_boot.img \
             --partition_name sd_boot \
@@ -204,7 +204,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp recovery.img signed/sd_recovery.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/recovery.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_recovery.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/sd_recovery.img \
             --partition_name sd_recovery \
@@ -218,7 +218,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp system.img signed/sd_system.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/system.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_system.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/sd_system.img \
             --partition_name sd_system \
@@ -235,7 +235,7 @@ jobs:
           export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/sd_vendor.img \
             --partition_name sd_vendor \
@@ -250,7 +250,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp dtbo.img signed/sd_dtbo.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/dtbo.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_dtbo.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/sd_dtbo.img \
             --partition_name sd_dtbo \
@@ -268,9 +268,9 @@ jobs:
             --algorithm SHA256_RSA2048 \
             --chain_partition sd_recovery:1:keys/recovery.avbpubkey \
             --chain_partition sd_system:2:keys/system.avbpubkey \
-            --include_descriptors_from_image signed/vendor.img \
-            --include_descriptors_from_image signed/dtbo.img \
-            --include_descriptors_from_image signed/boot.img
+            --include_descriptors_from_image signed/sd_vendor.img \
+            --include_descriptors_from_image signed/sd_dtbo.img \
+            --include_descriptors_from_image signed/sd_boot.img
 
       - name: Show vbmeta info
         run: |
@@ -296,11 +296,11 @@ jobs:
         run: |
           python avb/avbtool verify_image \
             --image signed/vbmeta.img \
-            --image signed/boot.img \
-            --image signed/recovery.img \
-            --image signed/system.img \
-            --image signed/dtbo.img \
-            --image signed/vendor.img \
+            --image signed/sd_boot.img \
+            --image signed/sd_recovery.img \
+            --image signed/sd_system.img \
+            --image signed/sd_dtbo.img \
+            --image signed/sd_vendor.img \
             --expected_chain_partition sd_recovery:1:keys/recovery.avbpubkey \
             --expected_chain_partition sd_system:2:keys/system.avbpubkey
 
@@ -327,8 +327,8 @@ jobs:
           name: resigned-all-partitions
           path: |
             signed/vbmeta.img
-            signed/boot.img
-            signed/recovery.img
-            signed/system.img
-            signed/dtbo.img
-            signed/vendor.img
+            signed/sd_boot.img
+            signed/sd_recovery.img
+            signed/sd_system.img
+            signed/sd_dtbo.img
+            signed/sd_vendor.img
