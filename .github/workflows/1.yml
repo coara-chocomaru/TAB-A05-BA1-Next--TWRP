@@ -121,14 +121,10 @@ jobs:
           
       - name: Install built fec to PATH
         run: |
-          LIB=${{ steps.pwd.outputs.workspace-folder }}/out/host/linux-x86/lib64
           sudo cp ${{ steps.pwd.outputs.workspace-folder }}/out/host/linux-x86/bin/fec /usr/local/bin/fec
           sudo chmod +x /usr/local/bin/fec
-          sudo cp $LIB/libbase.so /usr/local/lib/ || true
-          sudo cp $LIB/liblog.so  /usr/local/lib/ || true
-          sudo ldconfig
-          fec --help || true
-          
+          fec --version || fec --help || true
+
       - name: Clone avbtool 1.1.0 from AOSP android-9.0.0_r34
         run: git clone --depth 1 --branch android-9.0.0_r34 https://android.googlesource.com/platform/external/avb
 
