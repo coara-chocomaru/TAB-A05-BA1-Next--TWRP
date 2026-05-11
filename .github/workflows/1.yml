@@ -114,13 +114,6 @@ jobs:
           sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
           python --version
 
-      - name: Install pycryptodome for Python 2
-        run: |
-          python --version
-          python -m pip install --upgrade pip
-          python -m pip install pycryptodome
-          python -m pip install cryptography
-
       - name: Buildi
         working-directory: ${{ steps.pwd.outputs.workspace-folder }}
         run: |
@@ -182,6 +175,15 @@ jobs:
 
       - name: Set fixed salt for all partitions
         run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
+
+      - name: Switch to Python 3
+        run: |
+         sudo apt -y install python3 python3-pip
+         sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+         python --version
+         python -m pip install --upgrade pip
+         python -m pip install pycryptodome
+         python -m pip install cryptography
 
       - name: Capture original partition sizes
         run: |
