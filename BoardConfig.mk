@@ -176,8 +176,8 @@ TW_SCREEN_BLANK_ON_BOOT := true
 TW_USE_EXTERNAL_STORAGE := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
-#TW_EXCLUDE_BASH := true
-#TW_EXCLUDE_NANO := true
+TW_EXCLUDE_BASH := true
+TW_EXCLUDE_NANO := true
 TW_EXCLUDE_SUPERSU := true
 TW_EXCLUDE_TWRPAPP := true
 TW_EXCLUDE_PYTHON := true
@@ -185,4 +185,3 @@ TW_DEVICE_VERSION := $(shell date -u +" %F")
 RECOVERY_TOUCHSCREEN_SWAP_Y := true
 RECOVERY_TOUCHSCREEN_FLIP_XY := true
 #include vendor/sts/a05ba/BoardConfigVendor.mk
-
