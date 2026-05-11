@@ -182,8 +182,7 @@ jobs:
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch ${{ env.MAKEFILE_NAME }}-eng
           make clean
-          make ${{ env.BUILD_TARGET }}image -j$(nproc --all)
-          m -j"$(nproc)" fec
+          make ${{ env.BUILD_TARGET }}image fec -j$(nproc --all)
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
@@ -194,9 +193,12 @@ jobs:
             workspace/out/target/product/${{ env.DEVICE_NAME }}/${{ env.BUILD_TARGET }}.img
             workspace/out/target/product/${{ env.DEVICE_NAME }}/*.zip
             workspace/out/target/product/${{ env.DEVICE_NAME }}/*vendor*.img
+            workspace/out/host/linux-x86/bin/fec
+            workspace/out/host/linux-x86_64/bin/fec
           name: ${{ env.DEVICE_NAME }}-${{ github.run_id }}
           tag_name: ${{ github.run_id }}
           body: |
             Manifest: ${{ env.MANIFEST_BRANCH }}
             Device: ${{ env.DEVICE_NAME }}
             Target: ${{ env.BUILD_TARGET }}.img
+            Host Tools: fec (dm-verity FEC tool)
