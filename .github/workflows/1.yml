@@ -281,10 +281,16 @@ jobs:
       - name: Verify with nccgroup test_avb_key
         run: python3 nccgroup-avb/test_avb_key.py signed/vbmeta.img
         continue-on-error: true
+        
+      - name: Install pycryptodome for Python 2
+        run: |
+          python --version
+          python -m pip install --upgrade pip
+          python -m pip install pycryptodome
 
       - name: Full AVB chain verification (embedded keys)
         run: |
-          python3 avb/avbtool verify_image \
+          python avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --image signed/boot.img \
             --image signed/recovery.img \
@@ -296,7 +302,7 @@ jobs:
 
       - name: Explicit testkey verification
         run: |
-          python3 avb/avbtool verify_image \
+          python avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --key keys/vbmeta.pem \
             --expected_chain_partition recovery:1:keys/recovery.avbpubkey \
