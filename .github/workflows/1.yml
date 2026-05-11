@@ -189,10 +189,10 @@ jobs:
       - name: Sign boot.img => signed/boot.img (boot.pem, fixed salt)
         run: |
           cd $GITHUB_WORKSPACE
-          cp boot.img signed/boot.img
+          cp boot.img signed/sd_boot.img
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/boot.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/boot.img \
+            --image signed/sd_boot.img \
             --partition_name sd_boot \
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
@@ -203,10 +203,10 @@ jobs:
       - name: Sign recovery.img => signed/recovery.img
         run: |
           cd $GITHUB_WORKSPACE
-          cp recovery.img signed/recovery.img
+          cp recovery.img signed/sd_recovery.img
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/recovery.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/recovery.img \
+            --image signed/sd_recovery.img \
             --partition_name sd_recovery \
             --partition_size $RECOVERY_PARTITION_SIZE \
             --hash_algorithm sha256 \
@@ -217,10 +217,10 @@ jobs:
       - name: Sign system.img => signed/system.img
         run: |
           cd $GITHUB_WORKSPACE
-          cp system.img signed/system.img
+          cp system.img signed/sd_system.img
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/system.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/system.img \
+            --image signed/sd_system.img \
             --partition_name sd_system \
             --partition_size $SYSTEM_PARTITION_SIZE \
             --hash_algorithm sha256 \
@@ -231,13 +231,13 @@ jobs:
       - name: Sign vendor.img => signed/vendor.img (hashtree)
         run: |
           cd $GITHUB_WORKSPACE
-          cp vendor.img signed/vendor.img
+          cp vendor.img signed/sd_vendor.img
           export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
-            --image signed/vendor.img \
+            --image signed/sd_vendor.img \
             --partition_name sd_vendor \
             --partition_size $VENDOR_PARTITION_SIZE \
             --hash_algorithm sha1 \
@@ -249,10 +249,10 @@ jobs:
       - name: Sign dtbo.img => signed/dtbo.img
         run: |
           cd $GITHUB_WORKSPACE
-          cp dtbo.img signed/dtbo.img
+          cp dtbo.img signed/sd_dtbo.img
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/dtbo.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/dtbo.img \
+            --image signed/sd_dtbo.img \
             --partition_name sd_dtbo \
             --partition_size $DTBO_PARTITION_SIZE \
             --hash_algorithm sha256 \
