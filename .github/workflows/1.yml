@@ -1,48 +1,124 @@
-name: Deep-AVB-1.1.0-Resign-All-Partitions-Matching-next_vbmeta
+name: Re
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - yoko  # 実行するブランチを指定
+
+env:
+  MANIFEST_URL: 'https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni'
+  MANIFEST_BRANCH: 'twrp-9.0'
+  DEVICE_TREE_URL: 'https://github.com/coara-chocomaru/test-ctab'
+  DEVICE_TREE_BRANCH: 'yoko'
+  DEVICE_PATH: 'device/sts/a05ba'
+  DEVICE_NAME: 'a05ba'
+  MAKEFILE_NAME: 'omni_a05ba'
+  BUILD_TARGET: 'recovery'
+  # COMMON_TREE_URL と COMMON_PATH を必要に応じて指定してください
 
 jobs:
-  resign_boot_for_vbmeta:
-    runs-on: ubuntu-latest
-    container: ubuntu:20.04
+  build:
+    if: github.event.repository.owner.id == github.event.sender.id
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install system dependencies
+      - name: Display Run Parameters
         run: |
-          export DEBIAN_FRONTEND=noninteractive
-          export TZ=Asia/Tokyo
-          apt-get update
-          apt-get install -y tzdata
-          apt-get install -y p7zip-full openssl python2.7 python3 git wget xxd python-crypto zip curl
-          ln -sf /usr/bin/python2.7 /usr/bin/python
+          echo "::group::User Environment Variables"
+          echo "Manifest URL: ${{ env.MANIFEST_URL }}"
+          echo "Manifest Branch: ${{ env.MANIFEST_BRANCH }}"
+          echo "Device Tree URL: ${{ env.DEVICE_TREE_URL }}"
+          echo "Device Tree Branch: ${{ env.DEVICE_TREE_BRANCH }}"
+          echo "Device Path: ${{ env.DEVICE_PATH }}"
+          echo "Device Name: ${{ env.DEVICE_NAME }}"
+          echo "Makefile Name: ${{ env.MAKEFILE_NAME }}"
+          echo "Build Target: ${{ env.BUILD_TARGET }}.img"
+          echo "::endgroup::"
 
-      - name: Install repo tool
+      - name: Check Out
+        uses: actions/checkout@v3
+
+      - name: Cleanup
+        uses: rokibhasansagar/slimhub_actions@main
+
+      - name: Prepare the environment
         run: |
-          curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo -o /usr/local/bin/repo
-          chmod a+x /usr/local/bin/repo
+          sudo apt update
+          sudo apt -y upgrade
+          sudo apt -y install \
+            gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib \
+            libc6-dev lib32ncurses5-dev x11proto-core-dev libx11-dev tree \
+            lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc bc ccache \
+            lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev \
+            libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 lzop pngcrush \
+            schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp \
+            qemu-user-static libstdc++-10-dev libncurses5 python3 libtinfo5
 
-      - name: Build system/extras/verity/fec from AOSP android-9.0.0_r34
-        shell: bash
+      - name: Install OpenJDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: zulu
+          java-version: '8'
+
+      - name: Setup SSH Keys
+        if: startsWith(env.MANIFEST_URL, 'git@github.com')
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Install repo
         run: |
-          set -e
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          sudo ln -sf ~/bin/repo /usr/bin/repo
 
-          mkdir -p aosp
-          cd aosp
-          repo init -u https://android.googlesource.com/platform/manifest -b android-9.0.0_r34 --depth=1
-          repo sync -c -j"$(nproc)" --fail-fast
+      - name: Initialize repo
+        id: pwd
+        run: |
+          mkdir workspace
+          cd workspace
+          echo "workspace-folder=$(pwd)" >> "$GITHUB_OUTPUT"
+          git config --global user.name "azwhikaru"
+          git config --global user.email "azwhikaru+37921907@github.com"
+          repo init --depth=1 \
+            -u ${{ env.MANIFEST_URL }} \
+            -b ${{ env.MANIFEST_BRANCH }}
 
+      - name: Repo Sync
+        working-directory: workspace
+        run: |
+          repo sync -j$(nproc --all) --force-sync
+
+      - name: Move files to workspace
+        run: |
+          mkdir -p workspace/${{ env.DEVICE_PATH }}
+          ls | grep -v workspace | xargs -I{} mv {} workspace/${{ env.DEVICE_PATH }}
+
+
+      - name: Set Swap Space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 12
+
+      - name: Switch to Python 2
+        run: |
+          sudo apt -y install python2
+          sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
+          python --version
+
+      - name: Buildi
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+        run: |
           source build/envsetup.sh
-          lunch aosp_x86_64-eng
-          m -j"$(nproc)" fec
+          export ALLOW_MISSING_DEPENDENCIES=true
+          lunch ${{ env.MAKEFILE_NAME }}-eng
+          make clean
+          make fec -j$(nproc --all)
 
-          install -m 0755 out/host/linux-x86/bin/fec /usr/local/bin/fec
-          command -v fec
-          fec --help >/dev/null 2>&1 || true
       - name: Clone avbtool 1.1.0 from AOSP android-9.0.0_r34
         run: git clone --depth 1 --branch android-9.0.0_r34 https://android.googlesource.com/platform/external/avb
 
