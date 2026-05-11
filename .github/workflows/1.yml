@@ -261,8 +261,10 @@ jobs:
             --output signed/vbmeta.img \
             --key keys/vbmeta.pem \
             --algorithm SHA256_RSA2048 \
+            --chain_partition sd_boot:3:keys/boot.avbpubkey \
             --chain_partition sd_recovery:1:keys/recovery.avbpubkey \
             --chain_partition sd_system:2:keys/system.avbpubkey \
+            --chain_partition sd_vendor:4:keys/vendor.avbpubkey \
             --include_descriptors_from_image signed/sd_vendor.img \
             --include_descriptors_from_image signed/sd_dtbo.img \
             --include_descriptors_from_image signed/sd_boot.img
@@ -296,16 +298,21 @@ jobs:
             --image signed/sd_system.img \
             --image signed/sd_dtbo.img \
             --image signed/sd_vendor.img \
+            --expected_chain_partition sd_boot:3:keys/boot.avbpubkey \
             --expected_chain_partition sd_recovery:1:keys/recovery.avbpubkey \
-            --expected_chain_partition sd_system:2:keys/system.avbpubkey
+            --expected_chain_partition sd_system:2:keys/system.avbpubkey \
+            --expected_chain_partition sd_vendor:4:keys/vendor.avbpubkey
+
 
       - name: Explicit testkey verification
         run: |
           python avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --key keys/vbmeta.pem \
+            --expected_chain_partition sd_boot:3:keys/boot.avbpubkey \
             --expected_chain_partition sd_recovery:1:keys/recovery.avbpubkey \
-            --expected_chain_partition sd_system:2:keys/system.avbpubkey
+            --expected_chain_partition sd_system:2:keys/system.avbpubkey \
+            --expected_chain_partition sd_vendor:4:keys/vendor.avbpubkey
 
       - name: Zip keys folder
         run: zip -r keys.zip keys/
