@@ -119,12 +119,11 @@ jobs:
           make clean
           make fec -j$(nproc --all)
           
-      - name: Download pre-built fec
+      - name: Install built fec to PATH
         run: |
-          wget -O /usr/local/bin/fec "https://github.com/coara-chocomaru/TAB-A05-BA1-Next-TWRP/releases/download/25674336900/fec"
-          chmod +x /usr/local/bin/fec
-          command -v fec
-          fec --help
+          sudo cp ${{ steps.pwd.outputs.workspace-folder }}/out/host/linux-x86/bin/fec /usr/local/bin/fec
+          sudo chmod +x /usr/local/bin/fec
+          fec --version || fec --help || true
 
       - name: Clone avbtool 1.1.0 from AOSP android-9.0.0_r34
         run: git clone --depth 1 --branch android-9.0.0_r34 https://android.googlesource.com/platform/external/avb
