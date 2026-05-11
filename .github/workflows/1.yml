@@ -227,7 +227,9 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp vendor.img signed/vendor.img
-          LD_LIBRARY_PATH=${{ steps.pwd.outputs.workspace-folder }}/out/host/linux-x86/lib64 \
+          export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
+          export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
+          export PATH="$HOST_OUT/bin:${PATH}"
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/vendor.img \
