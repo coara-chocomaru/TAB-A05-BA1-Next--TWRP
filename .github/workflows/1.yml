@@ -197,8 +197,7 @@ jobs:
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/boot.pem \
-            --algorithm SHA256_RSA2048 \
-            --salt $FIXED_SALT
+            --algorithm SHA256_RSA2048
 
       - name: Sign recovery.img => signed/recovery.img
         run: |
@@ -211,8 +210,7 @@ jobs:
             --partition_size $RECOVERY_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/recovery.pem \
-            --algorithm SHA256_RSA2048 \
-            --salt $FIXED_SALT
+            --algorithm SHA256_RSA2048
 
       - name: Sign system.img => signed/system.img
         run: |
@@ -225,8 +223,7 @@ jobs:
             --partition_size $SYSTEM_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/system.pem \
-            --algorithm SHA256_RSA2048 \
-            --salt $FIXED_SALT
+            --algorithm SHA256_RSA2048
 
       - name: Sign vendor.img => signed/vendor.img (hashtree)
         run: |
@@ -243,8 +240,7 @@ jobs:
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
             --key keys/vendor.pem \
-            --algorithm SHA256_RSA2048 \
-            --salt $FIXED_SALT
+            --algorithm SHA256_RSA2048
 
       - name: Sign dtbo.img => signed/dtbo.img
         run: |
@@ -257,8 +253,7 @@ jobs:
             --partition_size $DTBO_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/dtbo.pem \
-            --algorithm SHA256_RSA2048 \
-            --salt $FIXED_SALT
+            --algorithm SHA256_RSA2048
 
       - name: Build vbmeta image
         run: |
