@@ -58,8 +58,9 @@ jobs:
             libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 lzop pngcrush \
             schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp \
             qemu-user-static libstdc++-10-dev libncurses5 python3 libtinfo5 \
-            openssl python2.7 git wget xxd zip curl
-      
+            openssl python2.7 git wget xxd python3-cryptography zip curl \
+            python3-pycryptodome
+            
       - name: Install OpenJDK
         uses: actions/setup-java@v3
         with:
@@ -176,15 +177,6 @@ jobs:
       - name: Set fixed salt for all partitions
         run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
 
-      - name: Switch to Python 3
-        run: |
-         sudo apt -y install python3 python3-pip
-         sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 1
-         python --version
-         python -m pip install --upgrade pip
-         python -m pip install pycryptodome
-         python -m pip install cryptography
-
       - name: Capture original partition sizes
         run: |
           cd $GITHUB_WORKSPACE
@@ -292,7 +284,7 @@ jobs:
 
       - name: Full AVB chain verification (embedded keys)
         run: |
-          python avb/avbtool verify_image \
+          python3 avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --image signed/boot.img \
             --image signed/recovery.img \
@@ -304,7 +296,7 @@ jobs:
 
       - name: Explicit testkey verification
         run: |
-          python avb/avbtool verify_image \
+          python3 avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --key keys/vbmeta.pem \
             --expected_chain_partition recovery:1:keys/recovery.avbpubkey \
