@@ -281,15 +281,17 @@ jobs:
       - name: Verify with nccgroup test_avb_key
         run: python3 nccgroup-avb/test_avb_key.py signed/vbmeta.img
         continue-on-error: true
-        
-      - name: Install pip for Python2
+
+       
+      - name: Install Python2 crypto libs
         run: |
-           curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
-           python get-pip.py
-           python -m pip install --upgrade "pip<21"
-           python -m pip install "setuptools<45"
-           python -m pip install pycryptodome
-           
+          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
+          python get-pip.py
+          python -m pip install --upgrade "pip<21"
+          python -m pip install "setuptools<45"
+          python -m pip uninstall -y pycryptodome || true
+          python -m pip install "pycrypto==2.6.1"
+          
       - name: Full AVB chain verification (embedded keys)
         run: |
           python avb/avbtool verify_image \
