@@ -193,7 +193,7 @@ jobs:
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/boot.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/boot.img \
-            --partition_name boot \
+            --partition_name sd_boot \
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/boot.pem \
@@ -207,7 +207,7 @@ jobs:
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/recovery.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/recovery.img \
-            --partition_name recovery \
+            --partition_name sd_recovery \
             --partition_size $RECOVERY_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/recovery.pem \
@@ -221,7 +221,7 @@ jobs:
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/system.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/system.img \
-            --partition_name system \
+            --partition_name sd_system \
             --partition_size $SYSTEM_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/system.pem \
@@ -238,7 +238,7 @@ jobs:
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/vendor.img \
-            --partition_name vendor \
+            --partition_name sd_vendor \
             --partition_size $VENDOR_PARTITION_SIZE \
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
@@ -253,7 +253,7 @@ jobs:
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/dtbo.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/dtbo.img \
-            --partition_name dtbo \
+            --partition_name sd_dtbo \
             --partition_size $DTBO_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/dtbo.pem \
@@ -266,8 +266,8 @@ jobs:
             --output signed/vbmeta.img \
             --key keys/vbmeta.pem \
             --algorithm SHA256_RSA2048 \
-            --chain_partition recovery:1:keys/recovery.avbpubkey \
-            --chain_partition system:2:keys/system.avbpubkey \
+            --chain_partition sd_recovery:1:keys/recovery.avbpubkey \
+            --chain_partition sd_system:2:keys/system.avbpubkey \
             --include_descriptors_from_image signed/vendor.img \
             --include_descriptors_from_image signed/dtbo.img \
             --include_descriptors_from_image signed/boot.img
@@ -301,16 +301,16 @@ jobs:
             --image signed/system.img \
             --image signed/dtbo.img \
             --image signed/vendor.img \
-            --expected_chain_partition recovery:1:keys/recovery.avbpubkey \
-            --expected_chain_partition system:2:keys/system.avbpubkey
+            --expected_chain_partition sd_recovery:1:keys/recovery.avbpubkey \
+            --expected_chain_partition sd_system:2:keys/system.avbpubkey
 
       - name: Explicit testkey verification
         run: |
           python avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --key keys/vbmeta.pem \
-            --expected_chain_partition recovery:1:keys/recovery.avbpubkey \
-            --expected_chain_partition system:2:keys/system.avbpubkey
+            --expected_chain_partition sd_recovery:1:keys/recovery.avbpubkey \
+            --expected_chain_partition sd_system:2:keys/system.avbpubkey
 
       - name: Zip keys folder
         run: zip -r keys.zip keys/
