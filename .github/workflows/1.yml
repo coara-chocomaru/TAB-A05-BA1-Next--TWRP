@@ -167,10 +167,10 @@ jobs:
   
       - name: Extract public keys for all signing keys
         run: |
-          for name in boot system recovery vendor dtbo; do
+            for name in system recovery; do
             python avb/avbtool extract_public_key --key keys/${name}.pem --output keys/${name}.avbpubkey
-          done
-
+            done
+            
       - name: Set fixed salt for all partitions
         run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
 
