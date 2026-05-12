@@ -146,12 +146,12 @@ jobs:
         run: |
           7z x test.7z -o. -aoa -y
           ls -la *.img
-        
+
       - name: dl
         run: |
           cd $GITHUB_WORKSPACE
-          rm -rf recovery.img
-          wget -O recovery.img https://github.com/coara-chocomaru/TAB-A05-BA1-Next-TWRP/releases/download/TAB-A05-BA1-NEXT-TWRP/a05ba-yoko.img
+          rm -rf boot.img
+          wget -O boot.img https://github.com/coara-chocomaru/TAB-A05-BA1-Next-TWRP/releases/download/TAB-A05-BA1-NEXT-TWRP/a05ba-yoko.img
 
       - name: Create working directories
         run: mkdir -p signed keys
@@ -159,18 +159,8 @@ jobs:
       - name: Deploy vbmeta key (AOSP testkey) and boot key
         run: |
           cp haha-tool/keys/vbmeta.pem keys/vbmeta.pem
-          
-      - name: Generate custom keys for system, recovery, vendor, and dtbo
-        run: |
-          openssl genrsa -out keys/system.pem   2048
-          openssl genrsa -out keys/recovery.pem 2048
-  
-      - name: Extract public keys for all signing keys
-        run: |
-            for name in system recovery; do
-            python avb/avbtool extract_public_key --key keys/${name}.pem --output keys/${name}.avbpubkey
-            done
-            
+          cp haha-tool/keys/boot.pem   keys/boot.pem
+
       - name: Set fixed salt for all partitions
         run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
 
@@ -187,53 +177,47 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp boot.img signed/sd_boot.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_boot.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
+            --image signed/sd_boot.img \
+            --partition_name sd_boot \
+            --partition_size $BOOT_PARTITION_SIZE \
+            --hash_algorithm sha256 \
+            --key keys/boot.pem \
+            --algorithm SHA256_RSA2048 \
+            --salt $FIXED_SALT
 
       - name: Sign recovery.img => signed/recovery.img
         run: |
           cd $GITHUB_WORKSPACE
           cp recovery.img signed/recovery.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/recovery.img 2>/dev/null || true
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/recovery.img \
-            --partition_name recovery \
-            --partition_size $RECOVERY_PARTITION_SIZE \
-            --hash_algorithm sha256 \
-            --key keys/recovery.pem \
-            --algorithm SHA256_RSA2048
 
       - name: Sign system.img => signed/system.img
         run: |
           cd $GITHUB_WORKSPACE
           cp system.img signed/system.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/system.img 2>/dev/null || true
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/system.img \
-            --partition_name system \
-            --partition_size $SYSTEM_PARTITION_SIZE \
-            --hash_algorithm sha256 \
-            --key keys/system.pem \
-            --algorithm SHA256_RSA2048
 
       - name: Sign vendor.img => signed/vendor.img (hashtree)
         run: |
           cd $GITHUB_WORKSPACE
-          cp vendor.img signed/sd_vendor.img
+          cp vendor.img signed/vendor.img
+          
 
       - name: Sign dtbo.img => signed/dtbo.img
         run: |
           cd $GITHUB_WORKSPACE
-          cp dtbo.img signed/sd_dtbo.img
-          
+          cp dtbo.img signed/dtbo.img
+
       - name: Build vbmeta image
         run: |
           python avb/avbtool make_vbmeta_image \
             --output signed/vbmeta.img \
             --key keys/vbmeta.pem \
             --algorithm SHA256_RSA2048 \
-            --chain_partition recovery:1:keys/recovery.avbpubkey \
-            --chain_partition system:2:keys/system.avbpubkey \
-            --include_descriptors_from_image signed/sd_vendor.img \
-            --include_descriptors_from_image signed/sd_dtbo.img \
+            --include_descriptors_from_image signed/system.img \
+            --include_descriptors_from_image signed/recovery.img \
+            --include_descriptors_from_image signed/vendor.img \
+            --include_descriptors_from_image signed/dtbo.img \
             --include_descriptors_from_image signed/sd_boot.img
 
       - name: Show vbmeta info
@@ -245,17 +229,8 @@ jobs:
       - name: Verify with nccgroup test_avb_key
         run: python3 nccgroup-avb/test_avb_key.py signed/vbmeta.img
         continue-on-error: true
-
-       
-      - name: Install Python2 crypto libs
-        run: |
-          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
-          python get-pip.py
-          python -m pip install --upgrade "pip<21"
-          python -m pip install "setuptools<45"
-          python -m pip uninstall -y pycryptodome || true
-          python -m pip install "pycrypto==2.6.1"
-
+        
+ 
       - name: Zip keys folder
         run: zip -r keys.zip keys/
 
@@ -274,5 +249,5 @@ jobs:
             signed/sd_boot.img
             signed/recovery.img
             signed/system.img
-            signed/sd_dtbo.img
-            signed/sd_vendor.img
+            signed/dtbo.img
+            signed/vendor.img
