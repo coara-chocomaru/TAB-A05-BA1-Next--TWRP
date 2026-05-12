@@ -191,11 +191,11 @@ jobs:
       - name: Sign recovery.img => signed/recovery.img
         run: |
           cd $GITHUB_WORKSPACE
-          cp recovery.img signed/sd_recovery.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_recovery.img 2>/dev/null || true
+          cp recovery.img signed/recovery.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/recovery.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/sd_recovery.img \
-            --partition_name sd_recovery \
+            --image signed/recovery.img \
+            --partition_name recovery \
             --partition_size $RECOVERY_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/recovery.pem \
@@ -204,11 +204,11 @@ jobs:
       - name: Sign system.img => signed/system.img
         run: |
           cd $GITHUB_WORKSPACE
-          cp system.img signed/sd_system.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_system.img 2>/dev/null || true
+          cp system.img signed/system.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/system.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/sd_system.img \
-            --partition_name sd_system \
+            --image signed/system.img \
+            --partition_name system \
             --partition_size $SYSTEM_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/system.pem \
@@ -230,8 +230,8 @@ jobs:
             --output signed/vbmeta.img \
             --key keys/vbmeta.pem \
             --algorithm SHA256_RSA2048 \
-            --chain_partition sd_recovery:1:keys/recovery.avbpubkey \
-            --chain_partition sd_system:2:keys/system.avbpubkey \
+            --chain_partition recovery:1:keys/recovery.avbpubkey \
+            --chain_partition system:2:keys/system.avbpubkey \
             --include_descriptors_from_image signed/sd_vendor.img \
             --include_descriptors_from_image signed/sd_dtbo.img \
             --include_descriptors_from_image signed/sd_boot.img
@@ -272,7 +272,7 @@ jobs:
           path: |
             signed/vbmeta.img
             signed/sd_boot.img
-            signed/sd_recovery.img
-            signed/sd_system.img
+            signed/recovery.img
+            signed/system.img
             signed/sd_dtbo.img
             signed/sd_vendor.img
