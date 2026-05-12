@@ -159,7 +159,20 @@ jobs:
       - name: Deploy vbmeta key (AOSP testkey) and boot key
         run: |
           cp haha-tool/keys/vbmeta.pem keys/vbmeta.pem
-          cp haha-tool/keys/boot.pem   keys/boot.pem
+
+      - name: Generate custom keys for system, recovery, vendor, and dtbo
+        run: |
+          openssl genrsa -out keys/boot.pem   2048
+          openssl genrsa -out keys/system.pem   2048
+          openssl genrsa -out keys/recovery.pem 2048
+          openssl genrsa -out keys/vendor.pem   2048
+          openssl genrsa -out keys/dtbo.pem     2048
+
+      - name: Extract public keys for all signing keys
+        run: |
+          for name in boot system recovery vendor dtbo; do
+            python avb/avbtool extract_public_key --key keys/${name}.pem --output keys/${name}.avbpubkey
+          done
 
       - name: Set fixed salt for all partitions
         run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
@@ -176,11 +189,11 @@ jobs:
       - name: Sign boot.img => signed/boot.img (boot.pem, fixed salt)
         run: |
           cd $GITHUB_WORKSPACE
-          cp boot.img signed/sd_boot.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_boot.img 2>/dev/null || true
+          cp boot.img signed/boot.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/boot.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/sd_boot.img \
-            --partition_name sd_boot \
+            --image signed/boot.img \
+            --partition_name boot \
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/boot.pem \
@@ -191,22 +204,61 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp recovery.img signed/recovery.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/recovery.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
+            --image signed/recovery.img \
+            --partition_name recovery \
+            --partition_size $RECOVERY_PARTITION_SIZE \
+            --hash_algorithm sha256 \
+            --key keys/recovery.pem \
+            --algorithm SHA256_RSA2048 \
+            --salt $FIXED_SALT
 
       - name: Sign system.img => signed/system.img
         run: |
           cd $GITHUB_WORKSPACE
           cp system.img signed/system.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/system.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
+            --image signed/system.img \
+            --partition_name system \
+            --partition_size $SYSTEM_PARTITION_SIZE \
+            --hash_algorithm sha256 \
+            --key keys/system.pem \
+            --algorithm SHA256_RSA2048 \
+            --salt $FIXED_SALT
 
       - name: Sign vendor.img => signed/vendor.img (hashtree)
         run: |
           cd $GITHUB_WORKSPACE
           cp vendor.img signed/vendor.img
-          
+          export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
+          export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
+          export PATH="$HOST_OUT/bin:${PATH}"
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
+            --image signed/vendor.img \
+            --partition_name vendor \
+            --partition_size $VENDOR_PARTITION_SIZE \
+            --hash_algorithm sha1 \
+            --fec_num_roots 2 \
+            --key keys/vendor.pem \
+            --algorithm SHA256_RSA2048 \
+            --salt $FIXED_SALT
 
       - name: Sign dtbo.img => signed/dtbo.img
         run: |
           cd $GITHUB_WORKSPACE
           cp dtbo.img signed/dtbo.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/dtbo.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
+            --image signed/dtbo.img \
+            --partition_name dtbo \
+            --partition_size $DTBO_PARTITION_SIZE \
+            --hash_algorithm sha256 \
+            --key keys/dtbo.pem \
+            --algorithm SHA256_RSA2048 \
+            --salt $FIXED_SALT
 
       - name: Build vbmeta image
         run: |
@@ -214,11 +266,13 @@ jobs:
             --output signed/vbmeta.img \
             --key keys/vbmeta.pem \
             --algorithm SHA256_RSA2048 \
+            --chain_partition recovery:1:keys/recovery.avbpubkey \
+            --chain_partition system:2:keys/system.avbpubkey \
             --include_descriptors_from_image signed/system.img \
             --include_descriptors_from_image signed/recovery.img \
             --include_descriptors_from_image signed/vendor.img \
             --include_descriptors_from_image signed/dtbo.img \
-            --include_descriptors_from_image signed/sd_boot.img
+            --include_descriptors_from_image signed/boot.img
 
       - name: Show vbmeta info
         run: |
@@ -229,8 +283,37 @@ jobs:
       - name: Verify with nccgroup test_avb_key
         run: python3 nccgroup-avb/test_avb_key.py signed/vbmeta.img
         continue-on-error: true
-        
- 
+
+       
+      - name: Install Python2 crypto libs
+        run: |
+          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
+          python get-pip.py
+          python -m pip install --upgrade "pip<21"
+          python -m pip install "setuptools<45"
+          python -m pip uninstall -y pycryptodome || true
+          python -m pip install "pycrypto==2.6.1"
+          
+      - name: Full AVB chain verification (embedded keys)
+        run: |
+          python avb/avbtool verify_image \
+            --image signed/vbmeta.img \
+            --image signed/boot.img \
+            --image signed/recovery.img \
+            --image signed/system.img \
+            --image signed/dtbo.img \
+            --image signed/vendor.img \
+            --expected_chain_partition recovery:1:keys/recovery.avbpubkey \
+            --expected_chain_partition system:2:keys/system.avbpubkey
+
+      - name: Explicit testkey verification
+        run: |
+          python avb/avbtool verify_image \
+            --image signed/vbmeta.img \
+            --key keys/vbmeta.pem \
+            --expected_chain_partition recovery:1:keys/recovery.avbpubkey \
+            --expected_chain_partition system:2:keys/system.avbpubkey
+
       - name: Zip keys folder
         run: zip -r keys.zip keys/
 
@@ -246,7 +329,7 @@ jobs:
           name: resigned-all-partitions
           path: |
             signed/vbmeta.img
-            signed/sd_boot.img
+            signed/boot.img
             signed/recovery.img
             signed/system.img
             signed/dtbo.img
