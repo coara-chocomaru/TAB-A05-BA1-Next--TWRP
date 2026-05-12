@@ -309,8 +309,8 @@ jobs:
           python avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --key keys/vbmeta.pem \
-            --expected_chain_partition recovery:1:keys/recovery.avbpubkey \
-            --expected_chain_partition system:2:keys/system.avbpubkey
+            --expected_chain_partition sd_boot:1:keys/recovery.avbpubkey \
+            --expected_chain_partition sd_system:2:keys/system.avbpubkey
 
       - name: Zip keys folder
         run: zip -r keys.zip keys/
