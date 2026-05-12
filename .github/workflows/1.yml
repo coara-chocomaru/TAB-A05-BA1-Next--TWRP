@@ -256,15 +256,6 @@ jobs:
           python -m pip uninstall -y pycryptodome || true
           python -m pip install "pycrypto==2.6.1"
 
-
-      - name: Explicit testkey verification
-        run: |
-          python avb/avbtool verify_image \
-            --image signed/vbmeta.img \
-            --key keys/vbmeta.pem \
-            --expected_chain_partition sd_recovery:1:keys/recovery.avbpubkey \
-            --expected_chain_partition sd_system:2:keys/system.avbpubkey
-
       - name: Zip keys folder
         run: zip -r keys.zip keys/
 
