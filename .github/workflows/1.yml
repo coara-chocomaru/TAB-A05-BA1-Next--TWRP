@@ -253,8 +253,8 @@ jobs:
             --algorithm SHA256_RSA2048 \
             --chain_partition recovery:1:keys/recovery.avbpubkey \
             --chain_partition system:2:keys/system.avbpubkey \
-            --include_descriptors_from_image signed/dtbo.img \
             --include_descriptors_from_image signed/vendor.img \
+            --include_descriptors_from_image signed/dtbo.img \
             --include_descriptors_from_image signed/boot.img
 
       - name: Show vbmeta info
