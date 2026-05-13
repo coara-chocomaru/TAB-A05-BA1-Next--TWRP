@@ -153,6 +153,7 @@ jobs:
       - name: Deploy vbmeta key (AOSP testkey) and boot key
         run: |
           cp haha-tool/keys/vbmeta.pem keys/vbmeta.pem
+          cp haha-tool/keys/vbmeta.pem keys/vbmeta.avbpubkey
 
       - name: Generate custom keys for system, recovery, vendor, and dtbo
         run: |
@@ -163,9 +164,10 @@ jobs:
 
       - name: Extract public keys for all signing keys
         run: |
-          for name in boot system recovery vendor dtbo; do
-            python avb/avbtool extract_public_key --key keys/${name}.pem --output keys/${name}.avbpubkey
-          done
+            python avb/avbtool extract_public_key --key keys/recovery.pem --output keys/recovery.avbpubkey
+            python avb/avbtool extract_public_key --key keys/system.pem --output keys/system.avbpubkey
+            python avb/avbtool extract_public_key --key keys/dtbo.pem --output keys/dtbo.avbpubkey
+            python avb/avbtool extract_public_key --key keys/vendor.pem --output keys/vendor.avbpubkey
 
       - name: Set fixed salt for all partitions
         run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
@@ -252,9 +254,9 @@ jobs:
             --algorithm SHA256_RSA2048 \
             --chain_partition recovery:1:keys/recovery.avbpubkey \
             --chain_partition system:2:keys/system.avbpubkey \
-            --include_descriptors_from_image signed/boot.img \
-            --include_descriptors_from_image signed/vendor.img \
             --include_descriptors_from_image signed/dtbo.img
+            --include_descriptors_from_image signed/vendor.img \
+            --include_descriptors_from_image signed/boot.img
 
       - name: Show vbmeta info
         run: |
