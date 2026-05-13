@@ -15,7 +15,6 @@ env:
   MAKEFILE_NAME: 'omni_a05ba'
   BUILD_TARGET: 'recovery'
   # COMMON_TREE_URL と COMMON_PATH を必要に応じて指定してください
-
 jobs:
   build:
     if: github.event.repository.owner.id == github.event.sender.id
