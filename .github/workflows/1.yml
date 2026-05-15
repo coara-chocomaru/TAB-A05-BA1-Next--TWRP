@@ -305,7 +305,6 @@ jobs:
       - name: Verify with nccgroup test_avb_key
         run: python3 nccgroup-avb/test_avb_key.py signed/vbmeta.img
         continue-on-error: true
-
        
       - name: Install Python2 crypto libs
         run: |
