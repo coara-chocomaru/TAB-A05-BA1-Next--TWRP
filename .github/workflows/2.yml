@@ -185,17 +185,12 @@ jobs:
         run: |
           openssl genrsa -out keys/system.pem   2048
           openssl genrsa -out keys/recovery.pem 2048
-          openssl genrsa -out keys/vendor.pem   2048
-          openssl genrsa -out keys/dtbo.pem     2048
-          openssl genrsa -out keys/boot.pem     2048
-
+    
       - name: Extract public keys for all signing keys
         run: |
-            python avb/avbtool extract_public_key --key keys/boot.pem --output keys/boot.avbpubkey
             python avb/avbtool extract_public_key --key keys/recovery.pem --output keys/recovery.avbpubkey
             python avb/avbtool extract_public_key --key keys/system.pem --output keys/system.avbpubkey
-            python avb/avbtool extract_public_key --key keys/dtbo.pem --output keys/dtbo.avbpubkey
-            python avb/avbtool extract_public_key --key keys/vendor.pem --output keys/vendor.avbpubkey
+
 
       - name: Set fixed salt for all partitions
         run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
@@ -219,7 +214,6 @@ jobs:
             --partition_name boot \
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
-            --key keys/boot.pem \
             --algorithm NONE \
             --salt $FIXED_SALT
 
@@ -274,7 +268,6 @@ jobs:
             --partition_size $VENDOR_PARTITION_SIZE \
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
-            --key keys/vendor.pem \
             --algorithm NONE \
             --salt $FIXED_SALT
 
@@ -288,7 +281,6 @@ jobs:
             --partition_name dtbo \
             --partition_size $DTBO_PARTITION_SIZE \
             --hash_algorithm sha256 \
-            --key keys/dtbo.pem \
             --algorithm NONE \
             --salt $FIXED_SALT
 
