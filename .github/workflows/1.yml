@@ -257,11 +257,10 @@ jobs:
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
           cp vendor.img signed/vendor.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/vendor.img \
             --partition_name vendor \
-            --partition_size $VENDOR_PARTITION_SIZE \
+            --partition_size 891289600 \
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
             --algorithm NONE \
