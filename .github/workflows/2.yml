@@ -1,5 +1,4 @@
 name: Re2
-
 on:
   push:
     branches:
