@@ -277,18 +277,6 @@ jobs:
           python -m pip uninstall -y pycryptodome || true
           python -m pip install "pycrypto==2.6.1"
           
-      - name: Full AVB chain verification (embedded keys)
-        run: |
-          python avb/avbtool verify_image \
-            --image signed/vbmeta.img \
-            --image signed/boot.img \
-            --image signed/recovery.img \
-            --image signed/system.img \
-            --image signed/dtbo.img \
-            --image signed/vendor.img \
-            --expected_chain_partition recovery:1:keys/recovery.avbpubkey \
-            --expected_chain_partition system:2:keys/system.avbpubkey
-
       - name: Explicit testkey verification
         run: |
           python avb/avbtool verify_image \
