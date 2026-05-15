@@ -267,7 +267,7 @@ jobs:
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
             --key keys/vendor.pem \
-            --algorithm SHA256_RSA2048 \
+            --algorithm NONE \
             --salt $FIXED_SALT
 
       - name: Sign dtbo.img => signed/dtbo.img
