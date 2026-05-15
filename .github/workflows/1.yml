@@ -149,6 +149,29 @@ jobs:
       - name: Create working directories
         run: mkdir -p signed keys
 
+      - name: info system
+        run: |
+         python avb/avbtool info_image system.img
+      
+      
+      - name: info system
+        run: |
+         python avb/avbtool info_image dtbo.img
+
+      - name: info boot
+        run: |
+         python avb/avbtool info_image boot.img
+
+      - name: info recovery
+        run: |
+         python avb/avbtool info_image recovery.img
+
+      
+      - name: info vbmeta
+        run: |
+         python avb/avbtool info_image vbmeta.img
+
+    
       - name: Deploy vbmeta key (AOSP testkey) and boot key
         run: |
           cp haha-tool/keys/vbmeta.pem keys/vbmeta.pem
