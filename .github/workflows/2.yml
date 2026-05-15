@@ -216,6 +216,10 @@ jobs:
             --algorithm NONE \
             --salt $FIXED_SALT
 
+      - name: info boot2
+        run: |
+         python avb/avbtool info_image --image signed/boot.img
+
       - name: Sign recovery.img => signed/recovery.img
         run: |
           cd $GITHUB_WORKSPACE
@@ -229,6 +233,11 @@ jobs:
             --key keys/recovery.pem \
             --algorithm SHA256_RSA2048 \
             --salt $FIXED_SALT
+            
+      - name: info recovery2
+        run: |
+         python avb/avbtool info_image --image signed/recovery.img
+
 
       - name: Sign system.img => signed/system.img
         run: |
@@ -269,6 +278,11 @@ jobs:
             --fec_num_roots 2 \
             --algorithm NONE \
             --salt $FIXED_SALT
+
+      - name: info vendor2
+        run: |
+         python avb/avbtool info_image --image signed/vendor.img
+
 
       - name: Sign dtbo.img => signed/dtbo.img
         run: |
