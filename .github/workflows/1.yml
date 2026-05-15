@@ -241,7 +241,7 @@ jobs:
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/system.img 2>/dev/null || true
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
+          python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/system.img \
             --partition_name system \
             --partition_size $SYSTEM_PARTITION_SIZE \
