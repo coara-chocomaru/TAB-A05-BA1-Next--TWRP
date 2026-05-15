@@ -181,13 +181,11 @@ jobs:
         run: |
           openssl genrsa -out keys/system.pem   2048
           openssl genrsa -out keys/recovery.pem 2048
-          openssl genrsa -out keys/boot.pem   2048
           
       - name: Extract public keys for all signing keys
         run: |
             python avb/avbtool extract_public_key --key keys/recovery.pem --output keys/recovery.avbpubkey
             python avb/avbtool extract_public_key --key keys/system.pem --output keys/system.avbpubkey
-            python avb/avbtool extract_public_key --key keys/boot.pem --output keys/boot.avbpubkey
             
       - name: Set fixed salt for all partitions
         run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
@@ -216,7 +214,6 @@ jobs:
             --partition_name boot \
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
-            --key keys/boot.pem \
             --algorithm NONE \
             --salt $FIXED_SALT
             
@@ -256,10 +253,10 @@ jobs:
       - name: Sign vendor.img => signed/vendor.img (hashtree)
         run: |
           cd $GITHUB_WORKSPACE
-          dd if=vendor.img of=signed/vendor.img bs=877137920 count=1
           export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/vendor.img \
             --partition_name vendor \
