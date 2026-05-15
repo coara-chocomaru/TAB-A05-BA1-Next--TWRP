@@ -247,7 +247,6 @@ jobs:
             --algorithm SHA256_RSA2048 \
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
-            --kernel_cmdline 'root=PARTUUID=$(ANDROID_SYSTEM_PARTUUID)' \
             --salt $FIXED_SALT
 
       - name: info system2
