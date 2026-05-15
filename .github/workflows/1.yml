@@ -154,7 +154,7 @@ jobs:
          python avb/avbtool info_image --image system.img
       
       
-      - name: info system
+      - name: info dtbo
         run: |
          python avb/avbtool info_image --image dtbo.img
 
