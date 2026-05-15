@@ -222,6 +222,7 @@ jobs:
             --hash_algorithm sha256 \
             --key keys/system.pem \
             --algorithm SHA256_RSA2048 \
+            --include_descriptors_from_image system.img  \
             --salt $FIXED_SALT
 
       - name: Sign vendor.img => signed/vendor.img (hashtree)
