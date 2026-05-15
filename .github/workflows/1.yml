@@ -216,7 +216,7 @@ jobs:
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/boot.pem \
-            --algorithm SHA256_RSA2048 \
+            --algorithm NONE \
             --salt $FIXED_SALT
 
       - name: Sign recovery.img => signed/recovery.img
@@ -281,7 +281,7 @@ jobs:
             --partition_size $DTBO_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/dtbo.pem \
-            --algorithm SHA256_RSA2048 \
+            --algorithm NONE \
             --salt $FIXED_SALT
 
       - name: Build vbmeta image
