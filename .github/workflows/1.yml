@@ -160,9 +160,11 @@ jobs:
           openssl genrsa -out keys/recovery.pem 2048
           openssl genrsa -out keys/vendor.pem   2048
           openssl genrsa -out keys/dtbo.pem     2048
+          openssl genrsa -out keys/boot.pem     2048
 
       - name: Extract public keys for all signing keys
         run: |
+            python avb/avbtool extract_public_key --key keys/boot.pem --output keys/boot.avbpubkey
             python avb/avbtool extract_public_key --key keys/recovery.pem --output keys/recovery.avbpubkey
             python avb/avbtool extract_public_key --key keys/system.pem --output keys/system.avbpubkey
             python avb/avbtool extract_public_key --key keys/dtbo.pem --output keys/dtbo.avbpubkey
@@ -184,6 +186,15 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp boot.img signed/boot.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/boot.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
+            --image signed/boot.img \
+            --partition_name boot \
+            --partition_size $BOOT_PARTITION_SIZE \
+            --hash_algorithm sha256 \
+            --key keys/boot.pem \
+            --algorithm SHA256_RSA2048 \
+            --salt $FIXED_SALT
 
       - name: Sign recovery.img => signed/recovery.img
         run: |
