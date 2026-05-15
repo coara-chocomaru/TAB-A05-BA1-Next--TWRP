@@ -237,15 +237,19 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp system.img signed/system.img
+          export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
+          export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
+          export PATH="$HOST_OUT/bin:${PATH}"
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/system.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/system.img \
             --partition_name system \
             --partition_size $SYSTEM_PARTITION_SIZE \
-            --hash_algorithm sha256 \
             --key keys/system.pem \
             --algorithm SHA256_RSA2048 \
-            --include_descriptors_from_image system.img  \
+            --hash_algorithm sha1 \
+            --fec_num_roots 2 \
+            --kernel_cmdline "root=PARTUUID=$(ANDROID_SYSTEM_PARTUUID)" \
             --salt $FIXED_SALT
 
       - name: Sign vendor.img => signed/vendor.img (hashtree)
