@@ -241,6 +241,7 @@ jobs:
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/system.img \
             --partition_name system \
+            --setup_as_rootfs_from_kernel \
             --partition_size $SYSTEM_PARTITION_SIZE \
             --key keys/system.pem \
             --algorithm SHA256_RSA2048 \
