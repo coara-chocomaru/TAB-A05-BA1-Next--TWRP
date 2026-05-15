@@ -216,15 +216,14 @@ jobs:
       - name: Sign vendor.img => signed/vendor.img (hashtree)
         run: |
           cd $GITHUB_WORKSPACE
-          cp vendor.img signed/vendor.img
+          dd if=vendor.img of=signed/vendor.img bs=891142144 count=1
           export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/vendor.img \
             --partition_name vendor \
-            --partition_size 891142144 \
+            --partition_size $VENDOR_PARTITION_SIZE \
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
             --key keys/vendor.pem \
