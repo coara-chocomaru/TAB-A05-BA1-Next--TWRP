@@ -220,7 +220,7 @@ jobs:
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/boot.pem \
-            --algorithm SHA256_RSA2048 \
+            --algorithm NONE \
             --salt $FIXED_SALT
 
       - name: Sign recovery.img => signed/recovery.img
@@ -256,6 +256,10 @@ jobs:
             --kernel_cmdline 'root=PARTUUID=$(ANDROID_SYSTEM_PARTUUID)' \
             --salt $FIXED_SALT
 
+      - name: info system2
+        run: |
+         python avb/avbtool info_image --image signed/system.img
+  
       - name: Sign vendor.img => signed/vendor.img (hashtree)
         run: |
           cd $GITHUB_WORKSPACE
@@ -271,7 +275,7 @@ jobs:
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
             --key keys/vendor.pem \
-            --algorithm SHA256_RSA2048 \
+            --algorithm NONE \
             --salt $FIXED_SALT
 
       - name: Sign dtbo.img => signed/dtbo.img
@@ -285,7 +289,7 @@ jobs:
             --partition_size $DTBO_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --key keys/dtbo.pem \
-            --algorithm SHA256_RSA2048 \
+            --algorithm NONE \
             --salt $FIXED_SALT
 
       - name: Build vbmeta image
