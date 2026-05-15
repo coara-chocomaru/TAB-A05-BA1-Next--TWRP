@@ -203,15 +203,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp boot.img signed/boot.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/boot.img 2>/dev/null || true
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/boot.img \
-            --partition_name boot \
-            --partition_size $BOOT_PARTITION_SIZE \
-            --hash_algorithm sha256 \
-            --algorithm NONE \
-            --salt $FIXED_SALT
-
+   
       - name: Sign recovery.img => signed/recovery.img
         run: |
           cd $GITHUB_WORKSPACE
@@ -224,7 +216,7 @@ jobs:
             --hash_algorithm sha256 \
             --key keys/recovery.pem \
             --algorithm SHA256_RSA2048 \
-            --salt $FIXED_SALT
+            --salt $(openssl rand -hex 32)
 
       - name: Sign system.img => signed/system.img
         run: |
@@ -243,7 +235,7 @@ jobs:
             --algorithm SHA256_RSA2048 \
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
-            --salt $FIXED_SALT
+            --salt $(openssl rand -hex 32)
 
       - name: Sign vendor.img => signed/vendor.img (hashtree)
         run: |
@@ -266,14 +258,6 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp dtbo.img signed/dtbo.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/dtbo.img 2>/dev/null || true
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/dtbo.img \
-            --partition_name dtbo \
-            --partition_size $DTBO_PARTITION_SIZE \
-            --hash_algorithm sha256 \
-            --algorithm NONE \
-            --salt $FIXED_SALT
 
       - name: Build vbmeta image
         run: |
