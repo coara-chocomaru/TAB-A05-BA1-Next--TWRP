@@ -151,25 +151,25 @@ jobs:
 
       - name: info system
         run: |
-         python avb/avbtool info_image system.img
+         python avb/avbtool info_image --image system.img
       
       
       - name: info system
         run: |
-         python avb/avbtool info_image dtbo.img
+         python avb/avbtool info_image --image dtbo.img
 
       - name: info boot
         run: |
-         python avb/avbtool info_image boot.img
+         python avb/avbtool info_image --image boot.img
 
       - name: info recovery
         run: |
-         python avb/avbtool info_image recovery.img
+         python avb/avbtool info_image --image recovery.img
 
       
       - name: info vbmeta
         run: |
-         python avb/avbtool info_image vbmeta.img
+         python avb/avbtool info_image --image vbmeta.img
 
     
       - name: Deploy vbmeta key (AOSP testkey) and boot key
