@@ -161,16 +161,10 @@ jobs:
         run: |
          python avb/avbtool info_image --image recovery.img
 
-      - name: info vendor
-        run: |
-         python avb/avbtool info_image --image vendor.img
-
-      
       - name: info vbmeta
         run: |
          python avb/avbtool info_image --image vbmeta.img
 
-    
       - name: Deploy vbmeta key (AOSP testkey) and boot key
         run: |
           cp haha-tool/keys/vbmeta.pem keys/vbmeta.pem
