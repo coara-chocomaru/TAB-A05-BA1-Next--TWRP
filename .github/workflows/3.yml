@@ -327,7 +327,7 @@ jobs:
           name: resigned-all-partitions
           path: |
             signed/vbmeta.img
-            signed/boot.img
+            signed/sd_boot.img
             signed/recovery.img
             signed/system.img
             signed/dtbo.img
