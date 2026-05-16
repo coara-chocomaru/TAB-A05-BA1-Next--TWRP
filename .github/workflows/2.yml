@@ -1,4 +1,5 @@
-name: Re2
+name: Next
+
 on:
   push:
     branches:
@@ -137,21 +138,16 @@ jobs:
       - name: Clone haha-you-used-testkeys (AOSP testkey)
         run: git clone https://github.com/alltechdev/haha-you-used-testkeys haha-tool
 
-      - name: Download test.zip
-        run: wget -O test.7z https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F/test.7z
+      - name: Download Neo.zip
+        run: wget -O Next.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/Next.zip
 
       - name: Extract images
         run: |
-          7z x test.7z -o. -aoa -y
+          7z x Next.zip -o. -aoa -y
           ls -la *.img
-
+          
       - name: Create working directories
-        run: mkdir -p signed keys
-
-      - name: info system
-        run: |
-         python avb/avbtool info_image --image system.img
-      
+        run: mkdir -p signed keys      
       
       - name: info dtbo
         run: |
@@ -165,16 +161,10 @@ jobs:
         run: |
          python avb/avbtool info_image --image recovery.img
 
-
-      - name: info vendor
-        run: |
-         python avb/avbtool info_image --image vendor.img
-
       - name: info vbmeta
         run: |
          python avb/avbtool info_image --image vbmeta.img
 
-    
       - name: Deploy vbmeta key (AOSP testkey) and boot key
         run: |
           cp haha-tool/keys/vbmeta.pem keys/vbmeta.pem
@@ -184,15 +174,14 @@ jobs:
         run: |
           openssl genrsa -out keys/system.pem   2048
           openssl genrsa -out keys/recovery.pem 2048
-    
+          
       - name: Extract public keys for all signing keys
         run: |
             python avb/avbtool extract_public_key --key keys/recovery.pem --output keys/recovery.avbpubkey
             python avb/avbtool extract_public_key --key keys/system.pem --output keys/system.avbpubkey
-
-
+            
       - name: Set fixed salt for all partitions
-        run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
+        run: echo "FIXED_SALT=d729aa3e3560d342fea2e70122845500ba2b6612a6031688350ac85b35c32921" >> $GITHUB_ENV
 
       - name: Capture original partition sizes
         run: |
@@ -202,7 +191,7 @@ jobs:
           echo "SYSTEM_PARTITION_SIZE=$(stat -c%s system.img)" >> $GITHUB_ENV
           echo "VENDOR_PARTITION_SIZE=$(stat -c%s vendor.img)" >> $GITHUB_ENV
           echo "DTBO_PARTITION_SIZE=$(stat -c%s dtbo.img)" >> $GITHUB_ENV
-
+      
       - name: Sign boot.img => signed/boot.img (boot.pem, fixed salt)
         run: |
           cd $GITHUB_WORKSPACE
@@ -215,11 +204,7 @@ jobs:
             --hash_algorithm sha256 \
             --algorithm NONE \
             --salt $FIXED_SALT
-
-      - name: info boot2
-        run: |
-         python avb/avbtool info_image --image signed/boot.img
-
+            
       - name: Sign recovery.img => signed/recovery.img
         run: |
           cd $GITHUB_WORKSPACE
@@ -233,11 +218,6 @@ jobs:
             --key keys/recovery.pem \
             --algorithm SHA256_RSA2048 \
             --salt $FIXED_SALT
-            
-      - name: info recovery2
-        run: |
-         python avb/avbtool info_image --image signed/recovery.img
-
 
       - name: Sign system.img => signed/system.img
         run: |
@@ -251,24 +231,20 @@ jobs:
             --image signed/system.img \
             --partition_name system \
             --setup_as_rootfs_from_kernel \
-            --partition_size $SYSTEM_PARTITION_SIZE \
+            --partition_size 2464153600 \
             --key keys/system.pem \
             --algorithm SHA256_RSA2048 \
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
-            --salt $FIXED_SALT
+            --salt $(openssl rand -hex 32)
 
-      - name: info system2
-        run: |
-         python avb/avbtool info_image --image signed/system.img
-  
       - name: Sign vendor.img => signed/vendor.img (hashtree)
         run: |
           cd $GITHUB_WORKSPACE
-          cp vendor.img signed/vendor.img
           export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
+          cp vendor.img signed/vendor.img
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/vendor.img \
@@ -279,23 +255,10 @@ jobs:
             --algorithm NONE \
             --salt $FIXED_SALT
 
-      - name: info vendor2
-        run: |
-         python avb/avbtool info_image --image signed/vendor.img
-
-
       - name: Sign dtbo.img => signed/dtbo.img
         run: |
           cd $GITHUB_WORKSPACE
           cp dtbo.img signed/dtbo.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/dtbo.img 2>/dev/null || true
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/dtbo.img \
-            --partition_name dtbo \
-            --partition_size $DTBO_PARTITION_SIZE \
-            --hash_algorithm sha256 \
-            --algorithm NONE \
-            --salt $FIXED_SALT
 
       - name: Build vbmeta image
         run: |
@@ -318,7 +281,6 @@ jobs:
       - name: Verify with nccgroup test_avb_key
         run: python3 nccgroup-avb/test_avb_key.py signed/vbmeta.img
         continue-on-error: true
-
        
       - name: Install Python2 crypto libs
         run: |
