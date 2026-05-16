@@ -139,12 +139,12 @@ jobs:
       - name: Clone haha-you-used-testkeys (AOSP testkey)
         run: git clone https://github.com/alltechdev/haha-you-used-testkeys haha-tool
 
-      - name: Download test.zip
-        run: wget -O test.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/test.zip
+      - name: Download test2.zip
+        run: wget -O test2.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/test2.zip
 
       - name: Extract images
         run: |
-          7z x test.zip -o. -aoa -y
+          7z x test2.zip -o. -aoa -y
           ls -la *.img
           
       - name: Create working directories
@@ -199,11 +199,6 @@ jobs:
           echo "SYSTEM_PARTITION_SIZE=$(stat -c%s system.img)" >> $GITHUB_ENV
           echo "VENDOR_PARTITION_SIZE=$(stat -c%s vendor.img)" >> $GITHUB_ENV
           echo "DTBO_PARTITION_SIZE=$(stat -c%s dtbo.img)" >> $GITHUB_ENV
-
-      - name: Sign boot.img => signed/boot.img (boot.pem, fixed salt)
-        run: |
-          cd $GITHUB_WORKSPACE
-          cp boot.img signed/boot.img
       
       - name: Sign boot.img => signed/boot.img (boot.pem, fixed salt)
         run: |
@@ -244,7 +239,7 @@ jobs:
             --image signed/system.img \
             --partition_name system \
             --setup_as_rootfs_from_kernel \
-            --partition_size $SYSTEM_PARTITION_SIZE \
+            --partition_size 3565158400 \
             --key keys/system.pem \
             --algorithm SHA256_RSA2048 \
             --hash_algorithm sha1 \
@@ -261,7 +256,7 @@ jobs:
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/vendor.img \
             --partition_name vendor \
-            --partition_size 891289600 \
+            --partition_size 1080033280 \
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
             --algorithm NONE \
