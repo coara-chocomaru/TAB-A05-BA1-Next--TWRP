@@ -138,12 +138,12 @@ jobs:
       - name: Clone haha-you-used-testkeys (AOSP testkey)
         run: git clone https://github.com/alltechdev/haha-you-used-testkeys haha-tool
 
-      - name: Download test2.zip
-        run: wget -O test2.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/test2.zip
+      - name: Download Neo.zip
+        run: wget -O Neo.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/Neo.zip
 
       - name: Extract images
         run: |
-          7z x test2.zip -o. -aoa -y
+          7z x Neo.zip -o. -aoa -y
           ls -la *.img
           
       - name: Create working directories
