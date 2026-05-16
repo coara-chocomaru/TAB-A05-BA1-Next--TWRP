@@ -143,8 +143,12 @@ jobs:
 
       - name: Extract images
         run: |
-          7z x Next.zip -o. -aoa -y
-          ls -la *.img
+           7z x Next.zip -o. -aoa -y
+           if [ -d Next ]; then
+           mv Next/*.img . 2>/dev/null || true
+           rmdir Next 2>/dev/null || true
+           fi
+           ls -la *.img
           
       - name: Create working directories
         run: mkdir -p signed keys      
