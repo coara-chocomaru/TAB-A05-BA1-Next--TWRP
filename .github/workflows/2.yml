@@ -185,7 +185,7 @@ jobs:
             python avb/avbtool extract_public_key --key keys/system.pem --output keys/system.avbpubkey
             
       - name: Set fixed salt for all partitions
-        run: echo "FIXED_SALT=d729aa3e3560d342fea2e70122845500ba2b6612a6031688350ac85b35c32921" >> $GITHUB_ENV
+        run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
 
       - name: Capture original partition sizes
         run: |
