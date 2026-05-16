@@ -143,8 +143,12 @@ jobs:
 
       - name: Extract images
         run: |
-          7z x Neo.zip -o. -aoa -y
-          ls -la *.img
+           7z x Neo.zip -o. -aoa -y
+             if [ -d Neo ]; then
+             mv Neo/*.img . 2>/dev/null || true
+             rmdir Neo 2>/dev/null || true
+             fi
+             ls -la *.img
           
       - name: Create working directories
         run: mkdir -p signed keys      
