@@ -267,7 +267,6 @@ jobs:
             --output signed/vbmeta.img \
             --key keys/vbmeta.pem \
             --algorithm SHA256_RSA2048 \
-            --flags 1 \
             --chain_partition recovery:1:keys/recovery.avbpubkey \
             --chain_partition system:2:keys/system.avbpubkey \
             --include_descriptors_from_image signed/vendor.img \
