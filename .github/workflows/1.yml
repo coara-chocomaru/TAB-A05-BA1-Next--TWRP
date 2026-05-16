@@ -1,4 +1,4 @@
-name: Re
+name: Neo
 
 on:
   push:
@@ -161,6 +161,10 @@ jobs:
         run: |
          python avb/avbtool info_image --image recovery.img
 
+      - name: info vendor
+        run: |
+         python avb/avbtool info_image --image vendor.img
+
       
       - name: info vbmeta
         run: |
@@ -233,7 +237,7 @@ jobs:
             --image signed/system.img \
             --partition_name system \
             --setup_as_rootfs_from_kernel \
-            --partition_size 3565158400 \
+            --partition_size 2464153600 \
             --key keys/system.pem \
             --algorithm SHA256_RSA2048 \
             --hash_algorithm sha1 \
@@ -247,11 +251,11 @@ jobs:
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
           cp vendor.img signed/vendor.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/system.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/vendor.img \
             --partition_name vendor \
-            --partition_size 1080033280 \
+            --partition_size $VENDOR_PARTITION_SIZE \
             --hash_algorithm sha1 \
             --fec_num_roots 2 \
             --algorithm NONE \
