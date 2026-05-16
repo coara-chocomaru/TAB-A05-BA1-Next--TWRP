@@ -148,12 +148,7 @@ jobs:
           ls -la *.img
           
       - name: Create working directories
-        run: mkdir -p signed keys
-
-      - name: info system
-        run: |
-         python avb/avbtool info_image --image system.img
-      
+        run: mkdir -p signed keys      
       
       - name: info dtbo
         run: |
