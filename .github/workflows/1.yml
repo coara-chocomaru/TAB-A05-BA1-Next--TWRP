@@ -184,7 +184,7 @@ jobs:
             python avb/avbtool extract_public_key --key keys/system.pem --output keys/system.avbpubkey
             
       - name: Set fixed salt for all partitions
-        run: echo "FIXED_SALT=70a0876074f1d5f3a4e57148cfbd248855407f3e62236b049f30a5c9d93cfed8" >> $GITHUB_ENV
+        run: echo "FIXED_SALT=93bcfb91efb48df8f4a9abbc66d4279819d23eeaa0d93223a638a7c11b801de3" >> $GITHUB_ENV
 
       - name: Capture original partition sizes
         run: |
@@ -220,7 +220,7 @@ jobs:
             --hash_algorithm sha256 \
             --key keys/recovery.pem \
             --algorithm SHA256_RSA2048 \
-            --salt $(openssl rand -hex 32)
+            --salt $FIXED_SALT
 
       - name: Sign system.img => signed/system.img
         run: |
@@ -268,6 +268,7 @@ jobs:
             --output signed/vbmeta.img \
             --key keys/vbmeta.pem \
             --algorithm SHA256_RSA2048 \
+            --flags 1 \
             --chain_partition recovery:1:keys/recovery.avbpubkey \
             --chain_partition system:2:keys/system.avbpubkey \
             --include_descriptors_from_image signed/vendor.img \
