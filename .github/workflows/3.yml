@@ -147,19 +147,8 @@ jobs:
           7z x test.zip -o. -aoa -y
           ls -la *.img
           
-      - name: dl
-        run: |
-          cd $GITHUB_WORKSPACE
-          rm -rf boot.img
-          wget -O boot.img https://github.com/coara-chocomaru/TAB-A05-BA1-Next-TWRP/releases/download/TAB-A05-BA1-NEXT-TWRP/a05ba-yoko.img
-
       - name: Create working directories
-        run: mkdir -p signed keys
-
-      - name: info system
-        run: |
-         python avb/avbtool info_image --image system.img
-      
+        run: mkdir -p signed keys  
       
       - name: info dtbo
         run: |
