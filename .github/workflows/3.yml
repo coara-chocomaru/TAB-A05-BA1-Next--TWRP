@@ -235,7 +235,7 @@ jobs:
             --image signed/system.img \
             --partition_name system \
             --setup_as_rootfs_from_kernel \
-            --partition_size $SYSTEM_PARTITION_SIZE \
+            --partition_size 2464153600 \
             --key keys/system.pem \
             --algorithm SHA256_RSA2048 \
             --hash_algorithm sha1 \
