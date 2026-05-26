@@ -1,5 +1,4 @@
-name: Re
-
+name: Next-v2
 
 on:
   push:
@@ -139,16 +138,20 @@ jobs:
       - name: Clone haha-you-used-testkeys (AOSP testkey)
         run: git clone https://github.com/alltechdev/haha-you-used-testkeys haha-tool
 
-      - name: Download test.zip
-        run: wget -O test.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/test.zip
+      - name: Download Neo.zip
+        run: wget -O Next.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/test.zip
 
       - name: Extract images
         run: |
-          7z x test.zip -o. -aoa -y
-          ls -la *.img
+           7z x Next.zip -o. -aoa -y
+           if [ -d Next ]; then
+           mv Next/*.img . 2>/dev/null || true
+           rmdir Next 2>/dev/null || true
+           fi
+           ls -la *.img
           
       - name: Create working directories
-        run: mkdir -p signed keys  
+        run: mkdir -p signed keys      
       
       - name: info dtbo
         run: |
@@ -162,12 +165,10 @@ jobs:
         run: |
          python avb/avbtool info_image --image recovery.img
 
-      
       - name: info vbmeta
         run: |
          python avb/avbtool info_image --image vbmeta.img
 
-    
       - name: Deploy vbmeta key (AOSP testkey) and boot key
         run: |
           cp haha-tool/keys/vbmeta.pem keys/vbmeta.pem
@@ -198,11 +199,11 @@ jobs:
       - name: Sign boot.img => signed/boot.img (boot.pem, fixed salt)
         run: |
           cd $GITHUB_WORKSPACE
-          cp boot.img signed/sd_boot.img
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/sd_boot.img 2>/dev/null || true
+          cp boot.img signed/boot.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/boot.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/sd_boot.img \
-            --partition_name sd_boot \
+            --image signed/boot.img \
+            --partition_name boot \
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --algorithm NONE \
@@ -220,7 +221,7 @@ jobs:
             --hash_algorithm sha256 \
             --key keys/recovery.pem \
             --algorithm SHA256_RSA2048 \
-            --salt $(openssl rand -hex 32)
+            --salt $FIXED_SALT
 
       - name: Sign system.img => signed/system.img
         run: |
@@ -248,6 +249,7 @@ jobs:
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
           cp vendor.img signed/vendor.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
             --image signed/vendor.img \
             --partition_name vendor \
@@ -261,6 +263,14 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp dtbo.img signed/dtbo.img
+          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/dtbo.img 2>/dev/null || true
+          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
+            --image signed/dtbo.img \
+            --partition_name dtbo \
+            --partition_size $DTBO_PARTITION_SIZE \
+            --hash_algorithm sha256 \
+            --algorithm NONE \
+            --salt $FIXED_SALT
 
       - name: Build vbmeta image
         run: |
@@ -272,7 +282,7 @@ jobs:
             --chain_partition system:2:keys/system.avbpubkey \
             --include_descriptors_from_image signed/vendor.img \
             --include_descriptors_from_image signed/dtbo.img \
-            --include_descriptors_from_image signed/sd_boot.img
+            --include_descriptors_from_image signed/boot.img
 
       - name: Show vbmeta info
         run: |
@@ -316,7 +326,7 @@ jobs:
           name: resigned-all-partitions
           path: |
             signed/vbmeta.img
-            signed/sd_boot.img
+            signed/boot.img
             signed/recovery.img
             signed/system.img
             signed/dtbo.img
