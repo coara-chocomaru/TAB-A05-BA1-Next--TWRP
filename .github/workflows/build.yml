@@ -3,7 +3,7 @@ name: Recovery Build
 on:
   push:
     branches:
-      - a05ba-yoko
+      - yoko
 
 env:
   MANIFEST_URL: 'https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni'
