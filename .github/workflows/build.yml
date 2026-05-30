@@ -1,4 +1,4 @@
-name: Recovery Build (Legacy)
+name: Recovery Build
 
 on:
   push:
