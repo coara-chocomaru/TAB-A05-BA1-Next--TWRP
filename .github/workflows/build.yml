@@ -1,4 +1,4 @@
-name: Recovery Build (Legacy)
+name: Recovery Build
 
 on:
   push:
@@ -173,6 +173,12 @@ jobs:
           sudo apt -y install python2
           sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
           python --version
+          
+      - name: Remove unused language files
+        run: |
+             cd workspace
+             find bootable/recovery/gui/theme/common/languages/ \
+             -name "*.xml" ! -name "ja.xml" ! -name "en.xml" -delete
 
       - name: Building recovery
         working-directory: ${{ steps.pwd.outputs.workspace-folder }}
