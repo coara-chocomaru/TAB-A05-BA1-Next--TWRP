@@ -183,6 +183,9 @@ jobs:
           make clean
           make ${{ env.BUILD_TARGET }}image -j$(nproc --all)
           
+      - name: Clone avbtool 1.1.0 from AOSP android-9.0.0_r34
+        run: git clone --depth 1 --branch android-9.0.0_r34 https://android.googlesource.com/platform/external/avb
+        
       - name: Sign recovery.img => signed/recovery.img
         run: |
           cd $GITHUB_WORKSPACE
