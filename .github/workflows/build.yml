@@ -189,7 +189,9 @@ jobs:
       - name: Sign recovery.img => signed/recovery.img
         run: |
           cd $GITHUB_WORKSPACE
-          cp out/target/product/${{ env.DEVICE_NAME }}/${{ env.BUILD_TARGET }}.img signed/recovery.img
+          dd if=out/target/product/${{ env.DEVICE_NAME }}/${{ env.BUILD_TARGET }}.img \
+          of=signed/recovery.img \
+          bs=16707584 count=1 \
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/recovery.img 2>/dev/null || true
           python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
             --image signed/recovery.img \
