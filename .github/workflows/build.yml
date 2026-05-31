@@ -182,24 +182,6 @@ jobs:
           lunch ${{ env.MAKEFILE_NAME }}-eng
           make clean
           make ${{ env.BUILD_TARGET }}image -j$(nproc --all)
-          
-      - name: Clone avbtool 1.1.0 from AOSP android-9.0.0_r34
-        run: git clone --depth 1 --branch android-9.0.0_r34 https://android.googlesource.com/platform/external/avb
-        
-      - name: Sign recovery.img => signed/recovery.img
-        run: |
-          cd $GITHUB_WORKSPACE
-          dd if=out/target/product/${{ env.DEVICE_NAME }}/${{ env.BUILD_TARGET }}.img \
-          of=signed/recovery.img \
-          bs=16707584 count=1 \
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer --image signed/recovery.img 2>/dev/null || true
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/recovery.img \
-            --partition_name recovery \
-            --partition_size 16777216 \
-            --hash_algorithm sha256 \
-            --key keys/recovery.pem \
-            --algorithm SHA256_RSA2048
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
