@@ -16,7 +16,6 @@ BOARD_SUPPRESS_SECURE_ERASE := true
 # HAL
 #TARGET_USES_HWC2 := true
 #TARGET_USES_HWC2ON1ADAPTER := false
-
 # disable
 BOARD_HAS_NFC := false
 BOARD_USES_NFC := false
