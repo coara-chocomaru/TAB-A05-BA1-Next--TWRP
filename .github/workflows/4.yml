@@ -139,7 +139,7 @@ jobs:
         run: git clone https://github.com/alltechdev/haha-you-used-testkeys haha-tool
 
       - name: Download Neo.zip
-        run: wget -O Next-2.7z https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/Neo2.zip
+        run: wget -O Next-2.7z https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/Next-2.7z
 
       - name: Extract images
         run: |
