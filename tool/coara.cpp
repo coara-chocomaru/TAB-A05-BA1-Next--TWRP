@@ -39,28 +39,28 @@ static void force_umount(const char* mountpoint) {
         return;
     }
     char cmd[256];
-    snprintf(cmd, sizeof(cmd), "umount -f '%s' 2>/dev/null", mountpoint);
+    snprintf(cmd, sizeof(cmd), "/sbin/umount -f '%s' 2>/dev/null", mountpoint);
     system(cmd);
 }
 
 static int wipe_block(const char* block) {
     char cmd[512];
     snprintf(cmd, sizeof(cmd),
-        "dd if=/dev/zero of='%s' bs=4096 count=512 2>/dev/null", block);
+        "/sbin/dd if=/dev/zero of='%s' bs=4096 count=512 2>/dev/null", block);
     return run_cmd(cmd);
 }
 
 static int format_ext4(const char* block, const char* label) {
     char cmd[512];
     snprintf(cmd, sizeof(cmd),
-        "mke2fs -t ext4 -b 4096 -L '%s' -F '%s'", label, block);
+        "/sbin/mke2fs -t ext4 -b 4096 -L '%s' -F '%s'", label, block);
     return run_cmd(cmd);
 }
 
 static int format_f2fs(const char* block, const char* label) {
     char cmd[512];
     snprintf(cmd, sizeof(cmd),
-        "mkfs.f2fs -f -l '%s' '%s'", label, block);
+        "/sbin/mkfs.f2fs -f -l '%s' '%s'", label, block);
     return run_cmd(cmd);
 }
 
