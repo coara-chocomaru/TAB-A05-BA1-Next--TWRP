@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
+#include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <dirent.h>
@@ -23,12 +24,23 @@ static const PartitionEntry PARTITIONS[] = {
     { nullptr,    nullptr,                         nullptr, nullptr   },
 };
 
-static int run_cmd(const char* cmd) {
-    int ret = system(cmd);
-    if (ret != 0) {
-        fprintf(stderr, "[coara] FAILED: %s (exit=%d)\n", cmd, WEXITSTATUS(ret));
+static int run_argv(const char* path, char* const argv[]) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        fprintf(stderr, "[coara] fork failed: %s\n", strerror(errno));
+        return 1;
     }
-    return WEXITSTATUS(ret);
+    if (pid == 0) {
+        execv(path, argv);
+        fprintf(stderr, "[coara] execv failed: %s: %s\n", path, strerror(errno));
+        _exit(127);
+    }
+    int status = 0;
+    waitpid(pid, &status, 0);
+    if (WIFEXITED(status)) {
+        return WEXITSTATUS(status);
+    }
+    return 1;
 }
 
 static void force_umount(const char* mountpoint) {
@@ -38,30 +50,51 @@ static void force_umount(const char* mountpoint) {
     if (errno == ENOENT || errno == EINVAL) {
         return;
     }
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd), "/sbin/umount -f '%s' 2>/dev/null", mountpoint);
-    system(cmd);
+    char* argv[] = {
+        (char*)"/sbin/umount",
+        (char*)"-f",
+        (char*)mountpoint,
+        nullptr
+    };
+    run_argv("/sbin/umount", argv);
 }
 
 static int wipe_block(const char* block) {
-    char cmd[512];
-    snprintf(cmd, sizeof(cmd),
-        "/sbin/dd if=/dev/zero of='%s' bs=4096 count=512 2>/dev/null", block);
-    return run_cmd(cmd);
+    char of_arg[512];
+    snprintf(of_arg, sizeof(of_arg), "of=%s", block);
+    char* argv[] = {
+        (char*)"/sbin/dd",
+        (char*)"if=/dev/zero",
+        of_arg,
+        (char*)"bs=4096",
+        (char*)"count=512",
+        nullptr
+    };
+    return run_argv("/sbin/dd", argv);
 }
 
 static int format_ext4(const char* block, const char* label) {
-    char cmd[512];
-    snprintf(cmd, sizeof(cmd),
-        "/sbin/mke2fs -t ext4 -b 4096 -L '%s' -F '%s'", label, block);
-    return run_cmd(cmd);
+    char* argv[] = {
+        (char*)"/sbin/mke2fs",
+        (char*)"-t", (char*)"ext4",
+        (char*)"-b", (char*)"4096",
+        (char*)"-L", (char*)label,
+        (char*)"-F",
+        (char*)block,
+        nullptr
+    };
+    return run_argv("/sbin/mke2fs", argv);
 }
 
 static int format_f2fs(const char* block, const char* label) {
-    char cmd[512];
-    snprintf(cmd, sizeof(cmd),
-        "/sbin/mkfs.f2fs -f -l '%s' '%s'", label, block);
-    return run_cmd(cmd);
+    char* argv[] = {
+        (char*)"/sbin/mkfs.f2fs",
+        (char*)"-f",
+        (char*)"-l", (char*)label,
+        (char*)block,
+        nullptr
+    };
+    return run_argv("/sbin/mkfs.f2fs", argv);
 }
 
 static int format_partition(const PartitionEntry* p) {
@@ -70,8 +103,12 @@ static int format_partition(const PartitionEntry* p) {
     force_umount(p->mountpoint);
     printf("[coara] umount: %s\n", p->mountpoint);
 
-    wipe_block(p->block);
-    printf("[coara] wiped: %s\n", p->block);
+    int wret = wipe_block(p->block);
+    if (wret != 0) {
+        fprintf(stderr, "[coara] wipe failed: %s (ret=%d)\n", p->block, wret);
+    } else {
+        printf("[coara] wiped: %s\n", p->block);
+    }
 
     int ret;
     if (strcmp(p->fstype, "ext4") == 0) {
@@ -86,7 +123,7 @@ static int format_partition(const PartitionEntry* p) {
     if (ret == 0) {
         printf("[coara] OK: %s\n", p->name);
     } else {
-        fprintf(stderr, "[coara] FAILED: %s\n", p->name);
+        fprintf(stderr, "[coara] FAILED: %s (ret=%d)\n", p->name, ret);
     }
     return ret;
 }
