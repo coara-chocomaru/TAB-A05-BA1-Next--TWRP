@@ -27,7 +27,6 @@
 
 /dev/block/platform/bootdevice/by-name/nvcfg /mnt/vendor/nvcfg ext4 noatime,nosuid,nodev,noauto_da_alloc,discard wait,check,formattable
 # 161 "vendor/mediatek/proprietary/hardware/fstab/mt8168/fstab.in"
-/devices/platform/soc/11240000.mmc* auto vfat defaults voldmanaged=sdcard1:auto,encryptable=userdata
 /devices/platform/mt_usb* auto vfat defaults voldmanaged=usbotg:auto,encryptable=userdata
 /devices/platform/soc/11190000.usb* auto vfat defaults voldmanaged=usbotg:auto,encryptable=userdata
 /devices/platform/soc/mt_usb* auto vfat defaults voldmanaged=usbotg:auto,encryptable=userdata
