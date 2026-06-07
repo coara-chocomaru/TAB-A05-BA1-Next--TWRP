@@ -42,6 +42,7 @@ LOCAL_PATH := device/sts/a05ba
 # Product characteristics
 PRODUCT_CHARACTERISTICS := tablet
 PRODUCT_PROPERTY_OVERRIDES += ro.radio.noril=true
+PRODUCT_PACKAGES += coara
 
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
     ro.build.product=TAB-A05-BA1 \
