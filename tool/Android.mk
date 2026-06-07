@@ -6,7 +6,6 @@ LOCAL_MODULE_TAGS          := optional
 LOCAL_SRC_FILES            := coara.cpp
 LOCAL_CPPFLAGS             := -std=c++11 -Wall -Wextra -DANDROID
 LOCAL_STATIC_LIBRARIES     :=
-LOCAL_SHARED_LIBRARIES     := liblog
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 LOCAL_MODULE_CLASS         := EXECUTABLES
 LOCAL_MODULE_PATH          := $(TARGET_RECOVERY_ROOT_OUT)/sbin
