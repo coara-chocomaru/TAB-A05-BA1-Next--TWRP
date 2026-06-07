@@ -20,7 +20,7 @@ static const PartitionEntry PARTITIONS[] = {
     { "metadata", "/dev/block/by-name/metadata", "ext4", "/metadata" },
     { "factory",  "/dev/block/by-name/factory",  "ext4", "/factory"  },
     { "cache",    "/dev/block/by-name/cache",     "ext4", "/cache"    },
-    { "data",     "/dev/block/by-name/userdata",  "f2fs", "/data"     },
+    { "data",     "/dev/block/mmcblk1",  "f2fs", "/data"     },
     { nullptr,    nullptr,                         nullptr, nullptr   },
 };
 
