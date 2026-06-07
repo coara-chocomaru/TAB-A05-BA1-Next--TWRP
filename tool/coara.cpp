@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
-#include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <dirent.h>
@@ -24,30 +23,12 @@ static const PartitionEntry PARTITIONS[] = {
     { nullptr,    nullptr,                         nullptr, nullptr   },
 };
 
-static void setup_path() {
-    setenv("PATH", "/sbin:/system/bin:/system/xbin", 1);
-}
-
-static int run_cmd(const char* const argv[]) {
-    pid_t pid = fork();
-    if (pid < 0) {
-        fprintf(stderr, "[coara] fork failed: %s\n", strerror(errno));
-        return 1;
+static int run_cmd(const char* cmd) {
+    int ret = system(cmd);
+    if (ret != 0) {
+        fprintf(stderr, "[coara] FAILED: %s (exit=%d)\n", cmd, WEXITSTATUS(ret));
     }
-    if (pid == 0) {
-        execvp(argv[0], const_cast<char* const*>(argv));
-        fprintf(stderr, "[coara] execvp failed: %s: %s\n", argv[0], strerror(errno));
-        _exit(127);
-    }
-    int status = 0;
-    if (waitpid(pid, &status, 0) < 0) {
-        fprintf(stderr, "[coara] waitpid failed: %s\n", strerror(errno));
-        return 1;
-    }
-    if (WIFEXITED(status)) {
-        return WEXITSTATUS(status);
-    }
-    return 1;
+    return WEXITSTATUS(ret);
 }
 
 static void force_umount(const char* mountpoint) {
@@ -57,65 +38,30 @@ static void force_umount(const char* mountpoint) {
     if (errno == ENOENT || errno == EINVAL) {
         return;
     }
-    const char* argv[] = { "umount", "-f", mountpoint, nullptr };
-    run_cmd(argv);
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "umount -f '%s' 2>/dev/null", mountpoint);
+    system(cmd);
 }
 
 static int wipe_block(const char* block) {
-    char count_str[] = "512";
-    char bs_str[]    = "4096";
-    const char* argv[] = {
-        "dd",
-        "if=/dev/zero",
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr
-    };
-    char of_buf[512];
-    char bs_buf[64];
-    char count_buf[64];
-    snprintf(of_buf,    sizeof(of_buf),    "of=%s",    block);
-    snprintf(bs_buf,    sizeof(bs_buf),    "bs=%s",    bs_str);
-    snprintf(count_buf, sizeof(count_buf), "count=%s", count_str);
-    argv[2] = of_buf;
-    argv[3] = bs_buf;
-    argv[4] = count_buf;
-    return run_cmd(argv);
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd),
+        "dd if=/dev/zero of='%s' bs=4096 count=512 2>/dev/null", block);
+    return run_cmd(cmd);
 }
 
 static int format_ext4(const char* block, const char* label) {
-    const char* argv[] = {
-        "mke2fs",
-        "-t", "ext4",
-        "-b", "4096",
-        "-L", label,
-        "-F",
-        block,
-        nullptr
-    };
-    int ret = run_cmd(argv);
-    if (ret != 0) {
-        const char* argv2[] = {
-            "make_ext4fs",
-            "-L", label,
-            block,
-            nullptr
-        };
-        ret = run_cmd(argv2);
-    }
-    return ret;
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd),
+        "mke2fs -t ext4 -b 4096 -L '%s' -F '%s'", label, block);
+    return run_cmd(cmd);
 }
 
 static int format_f2fs(const char* block, const char* label) {
-    const char* argv[] = {
-        "mkfs.f2fs",
-        "-f",
-        "-l", label,
-        block,
-        nullptr
-    };
-    return run_cmd(argv);
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd),
+        "mkfs.f2fs -f -l '%s' '%s'", label, block);
+    return run_cmd(cmd);
 }
 
 static int format_partition(const PartitionEntry* p) {
@@ -124,12 +70,8 @@ static int format_partition(const PartitionEntry* p) {
     force_umount(p->mountpoint);
     printf("[coara] umount: %s\n", p->mountpoint);
 
-    int wret = wipe_block(p->block);
-    if (wret != 0) {
-        fprintf(stderr, "[coara] wipe warning: %s (ret=%d)\n", p->block, wret);
-    } else {
-        printf("[coara] wiped: %s\n", p->block);
-    }
+    wipe_block(p->block);
+    printf("[coara] wiped: %s\n", p->block);
 
     int ret;
     if (strcmp(p->fstype, "ext4") == 0) {
@@ -144,7 +86,7 @@ static int format_partition(const PartitionEntry* p) {
     if (ret == 0) {
         printf("[coara] OK: %s\n", p->name);
     } else {
-        fprintf(stderr, "[coara] FAILED: %s (ret=%d)\n", p->name, ret);
+        fprintf(stderr, "[coara] FAILED: %s\n", p->name);
     }
     return ret;
 }
@@ -161,8 +103,6 @@ static void usage(const char* argv0) {
 }
 
 int main(int argc, char** argv) {
-    setup_path();
-
     if (argc < 2) {
         usage(argv[0]);
         return 1;
