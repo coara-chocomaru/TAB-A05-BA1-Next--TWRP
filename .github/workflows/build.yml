@@ -3,13 +3,13 @@ name: Recovery Build
 on:
   push:
     branches:
-      - testx
+      - testa
 
 env:
   MANIFEST_URL: 'https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni'
   MANIFEST_BRANCH: 'twrp-9.0'
   DEVICE_TREE_URL: 'https://github.com/coara-chocomaru/TAB-A05-BA1-Next-TWRP'
-  DEVICE_TREE_BRANCH: 'testx'
+  DEVICE_TREE_BRANCH: 'testa'
   DEVICE_PATH: 'device/sts/a05ba'
   DEVICE_NAME: 'a05ba'
   MAKEFILE_NAME: 'omni_a05ba'
