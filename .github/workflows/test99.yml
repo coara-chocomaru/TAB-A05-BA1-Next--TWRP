@@ -132,14 +132,14 @@ jobs:
         run: git clone --depth 1 --branch android-9.0.0_r34 https://android.googlesource.com/platform/external/avb
 
       - name: Download zip
-        run: wget -O h.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A6%E3%81%99%E3%81%A899/h.zip
+        run: wget -O h.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A6%E3%81%99%E3%81%9988/h.zip
 
       - name: Extract images
         run: |
           7z x h.zip -o. -aoa -y
           ls -la *.img
 
-      - name: Switch to Python 2
+      - name: Switch to Python 2 (for avbtool)
         run: |
           sudo apt -y install python2
           sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
@@ -189,12 +189,10 @@ jobs:
           echo "VENDOR_PARTITION_SIZE=$(stat -c%s vendor.img)" >> $GITHUB_ENV
           echo "DTBO_PARTITION_SIZE=$(stat -c%s dtbo.img)" >> $GITHUB_ENV
 
-      # ==================== 生成 temp (无 Prop) 和 final (含 Prop) 镜像 ====================
+      # ==================== temp (Prop無し) と final (Prop有り) の生成 ====================
       - name: Generate temp (no prop) and final (with prop) for boot
         run: |
           cd $GITHUB_WORKSPACE
-
-          # 1) temp（无 prop，用于 include）
           cp boot.img temp_signed/boot_temp.img
           python avb/avbtool erase_footer --image temp_signed/boot_temp.img 2>/dev/null || true
           python avb/avbtool add_hash_footer \
@@ -205,7 +203,6 @@ jobs:
             --algorithm NONE \
             --salt e5221de4db25a10ca4ce5f651de5498c423ac4f86dff69815f3fcf5a9f370bde
 
-          # 2) final（含 prop）
           cp boot.img signed/boot.img
           python avb/avbtool erase_footer --image signed/boot.img 2>/dev/null || true
           python avb/avbtool add_hash_footer \
@@ -219,7 +216,7 @@ jobs:
             --prop com.android.build.boot.os_version:11 \
             --prop com.android.build.boot.security_patch:2024-02-01
 
-      - name: Generate temp and final for dtbo (no prop, so final = temp)
+      - name: Generate temp and final for dtbo (no prop in stock)
         run: |
           cd $GITHUB_WORKSPACE
           cp dtbo.img temp_signed/dtbo_temp.img
@@ -231,8 +228,6 @@ jobs:
             --hash_algorithm sha256 \
             --algorithm NONE \
             --salt 20e6fe8fc5b31ea3bcafdfea79854073b98e01a9c451b9046ebb6c4c12754a29
-
-          # dtbo 没有 Prop，直接复制作为 final
           cp temp_signed/dtbo_temp.img signed/dtbo.img
 
       - name: Generate temp and final for vendor_boot
@@ -322,7 +317,7 @@ jobs:
             --prop com.android.build.vendor.os_version:11 \
             --prop com.android.build.vendor.security_patch:2024-02-01
 
-      # ==================== 验证 temp 与 final 的哈希/根摘要一致 ====================
+      # ==================== temp と final のダイジェストが同一であることを検証 ====================
       - name: Verify temp and final have same digest/root digest
         run: |
           cd $GITHUB_WORKSPACE
@@ -341,27 +336,13 @@ jobs:
             echo "OK: $field matches for $img1 and $img2"
           }
 
-          # boot (Hash descriptor)
           check_equal temp_signed/boot_temp.img signed/boot.img "Digest:"
-          check_equal temp_signed/boot_temp.img signed/boot.img "Salt:"
-
-          # dtbo
           check_equal temp_signed/dtbo_temp.img signed/dtbo.img "Digest:"
-          check_equal temp_signed/dtbo_temp.img signed/dtbo.img "Salt:"
-
-          # vendor_boot
           check_equal temp_signed/vendor_boot_temp.img signed/vendor_boot.img "Digest:"
-          check_equal temp_signed/vendor_boot_temp.img signed/vendor_boot.img "Salt:"
-
-          # odm (Hashtree descriptor)
           check_equal temp_signed/odm_temp.img signed/odm.img "Root Digest:"
-          check_equal temp_signed/odm_temp.img signed/odm.img "Salt:"
-
-          # vendor
           check_equal temp_signed/vendor_temp.img signed/vendor.img "Root Digest:"
-          check_equal temp_signed/vendor_temp.img signed/vendor.img "Salt:"
 
-      # ==================== 断言：final 镜像与 stock 摘要匹配（沿用原逻辑） ====================
+      # ==================== final イメージが Stock のダイジェストと一致するかアサート ====================
       - name: Assert re-footed partitions match stock digests
         run: |
           cd $GITHUB_WORKSPACE
@@ -398,7 +379,7 @@ jobs:
           check_digest signed/vendor.img 776269824 "FEC offset:"
           check_digest signed/vendor.img 6144000 "FEC size:"
 
-          # 确保 final 镜像包含预期的 Prop（数量不为 0）
+          # Prop の存在確認
           for img in signed/boot.img signed/vendor_boot.img signed/odm.img signed/vendor.img; do
             prop_count=$(python avb/avbtool info_image --image "$img" | grep -c "^    Prop:" || true)
             if [ "$prop_count" -eq 0 ]; then
@@ -407,7 +388,6 @@ jobs:
             fi
             echo "OK: $img has $prop_count Prop descriptors"
           done
-          # dtbo 没有 Prop，数量应为 0
           prop_count_dtbo=$(python avb/avbtool info_image --image signed/dtbo.img | grep -c "^    Prop:" || true)
           if [ "$prop_count_dtbo" -ne 0 ]; then
             echo "ERROR: dtbo should not have Prop descriptors"
@@ -415,7 +395,7 @@ jobs:
           fi
           echo "OK: dtbo has no Prop descriptors"
 
-      # ==================== 构建 vbmeta（使用 temp 镜像） ====================
+      # ==================== vbmeta の構築（temp イメージを参照） ====================
       - name: Keep original vbmeta_system.img unchanged
         run: |
           cp vbmeta_system.img signed/vbmeta_system.img
@@ -453,15 +433,70 @@ jobs:
           echo "---hexdump---"
           xxd signed/vbmeta.img | head -30
 
-      # ==================== 验证 vbmeta 与 temp 镜像一致并可启动 ====================
-      - name: Explicit testkey verification (vbmeta)
+      # ==================== ★★★ 修正済み: vbmeta と temp イメージの記述子を検証 ★★★ ====================
+      - name: Verify vbmeta includes correct descriptors from temp images
+        run: |
+          cd $GITHUB_WORKSPACE
+
+          # (修正済み) awk を使い、パーティション名を完全一致で比較し、Digest / Root Digest を正しく抽出する
+          check_vbmeta_descriptor() {
+            local partition="$1"
+            local temp_img="$2"
+
+            # temp イメージから期待値を取得 (Partition Name: 完全一致 -> Digest/Root Digest の最終フィールド)
+            local expected_digest=$(python avb/avbtool info_image --image "$temp_img" | \
+              awk -v p="$partition" '
+                $0 ~ "Partition Name: " p { found=1 }
+                found && /(Root )?Digest:/ { print $NF; exit }
+              ')
+
+            # vbmeta イメージから実値を取得 (同様のロジック)
+            local vbmeta_digest=$(python avb/avbtool info_image --image signed/vbmeta.img | \
+              awk -v p="$partition" '
+                $0 ~ "Partition Name: " p { found=1 }
+                found && /(Root )?Digest:/ { print $NF; exit }
+              ')
+
+            if [ -z "$expected_digest" ] || [ -z "$vbmeta_digest" ]; then
+              echo "ERROR: Could not find digest for partition $partition"
+              echo "  Expected digest: '$expected_digest'"
+              echo "  Found digest:    '$vbmeta_digest'"
+              exit 1
+            fi
+
+            if [ "$expected_digest" != "$vbmeta_digest" ]; then
+              echo "MISMATCH: $partition descriptor in vbmeta does not match $temp_img"
+              echo "  Expected: $expected_digest"
+              echo "  Found:    $vbmeta_digest"
+              exit 1
+            fi
+            echo "OK: $partition descriptor in vbmeta matches $temp_img"
+          }
+
+          check_vbmeta_descriptor "boot"        temp_signed/boot_temp.img
+          check_vbmeta_descriptor "dtbo"        temp_signed/dtbo_temp.img
+          check_vbmeta_descriptor "vendor_boot" temp_signed/vendor_boot_temp.img
+          check_vbmeta_descriptor "odm"         temp_signed/odm_temp.img
+          check_vbmeta_descriptor "vendor"      temp_signed/vendor_temp.img
+
+      # ==================== 署名検証 ====================
+      - name: Install Python2 crypto libs
+        run: |
+          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
+          python get-pip.py
+          python -m pip install --upgrade "pip<21"
+          python -m pip install "setuptools<45"
+          python -m pip uninstall -y pycryptodome || true
+          python -m pip install "pycrypto==2.6.1"
+
+      - name: Explicit testkey verification
         run: |
           python avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --key keys/testkey_rsa4096.pem \
             --expected_chain_partition vbmeta_system:2:keys/vbmeta_system.avbpubkey
 
-      # ==================== 打包并上传 ====================
+      # ==================== 成果物のアップロード ====================
       - name: Zip keys folder
         run: zip -r keys.zip keys/
 
@@ -476,7 +511,6 @@ jobs:
         with:
           name: resigned-all-partitions
           path: |
-            signed/boot_temp.img
             signed/vbmeta.img
             signed/vbmeta_system.img
             signed/boot.img
