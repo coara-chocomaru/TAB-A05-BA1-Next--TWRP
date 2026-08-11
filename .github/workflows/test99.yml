@@ -245,6 +245,9 @@ jobs:
       - name: Sign odm.img => signed/odm.img
         run: |
           cd $GITHUB_WORKSPACE
+          export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
+          export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
+          export PATH="$HOST_OUT/bin:${PATH}"
           cp odm.img signed/odm.img
 
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer \
@@ -264,6 +267,9 @@ jobs:
       - name: Sign vendor.img => signed/vendor.img
         run: |
           cd $GITHUB_WORKSPACE
+          export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
+          export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
+          export PATH="$HOST_OUT/bin:${PATH}"
           cp vendor.img signed/vendor.img
 
           python $GITHUB_WORKSPACE/avb/avbtool erase_footer \
