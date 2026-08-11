@@ -515,6 +515,11 @@ jobs:
         with:
           name: resigned-all-partitions
           path: |
+            signed/boot_temp.img
+            signed/odm_temp.img
+            signed/dtbo_temp.img
+            signed/vendor_boot_temp.img
+            signed/vendor_temp.img
             signed/vbmeta.img
             signed/vbmeta_system.img
             signed/boot.img
