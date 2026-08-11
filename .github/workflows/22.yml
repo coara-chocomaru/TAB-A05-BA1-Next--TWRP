@@ -135,12 +135,6 @@ jobs:
           7z x h.zip -o. -aoa -y
           ls -la *.img
 
-      - name: Switch to Python 2
-        run: |
-          sudo apt -y install python2
-          sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
-          python --version
-
       - name: info dtbo
         run: |
           python avb/avbtool info_image --image dtbo.img
