@@ -440,7 +440,7 @@ jobs:
           echo "---hexdump---"
           xxd signed/vbmeta.img | head -30
 
-      # ==================== vbmeta と temp イメージの記述子を検証 (修正済み) ====================
+      # ==================== ★★★ 修正済み: vbmeta と temp イメージの記述子を検証 ★★★ ====================
       - name: Verify vbmeta includes correct descriptors from temp images
         run: |
           cd $GITHUB_WORKSPACE
@@ -449,16 +449,16 @@ jobs:
             local partition="$1"
             local temp_img="$2"
 
-            # 修正: "Partition Name: *" で任意のスペースに対応
+            # ★ 修正: パーティション名を完全一致（行末まで）にする
             local expected_digest=$(python avb/avbtool info_image --image "$temp_img" | \
               awk -v p="$partition" '
-                $0 ~ "Partition Name: *" p { found=1 }
+                $0 ~ "Partition Name: *" p "$" { found=1 }
                 found && /(Root )?Digest:/ { print $NF; exit }
               ')
 
             local vbmeta_digest=$(python avb/avbtool info_image --image signed/vbmeta.img | \
               awk -v p="$partition" '
-                $0 ~ "Partition Name: *" p { found=1 }
+                $0 ~ "Partition Name: *" p "$" { found=1 }
                 found && /(Root )?Digest:/ { print $NF; exit }
               ')
 
@@ -523,7 +523,7 @@ jobs:
             signed/dtbo.img
             signed/vendor_boot.img
             signed/vendor.img
-            # 必要に応じて temp イメージも含める（デバッグ用）
+            # デバッグ用に temp も含める（任意）
             temp_signed/boot_temp.img
             temp_signed/odm_temp.img
             temp_signed/dtbo_temp.img
