@@ -449,15 +449,16 @@ jobs:
             local partition="$1"
             local temp_img="$2"
 
+            # 修正: "Partition Name: *" で任意のスペースに対応
             local expected_digest=$(python avb/avbtool info_image --image "$temp_img" | \
               awk -v p="$partition" '
-                $0 ~ "Partition Name: " p { found=1 }
+                $0 ~ "Partition Name: *" p { found=1 }
                 found && /(Root )?Digest:/ { print $NF; exit }
               ')
 
             local vbmeta_digest=$(python avb/avbtool info_image --image signed/vbmeta.img | \
               awk -v p="$partition" '
-                $0 ~ "Partition Name: " p { found=1 }
+                $0 ~ "Partition Name: *" p { found=1 }
                 found && /(Root )?Digest:/ { print $NF; exit }
               ')
 
@@ -515,11 +516,6 @@ jobs:
         with:
           name: resigned-all-partitions
           path: |
-            signed/boot_temp.img
-            signed/odm_temp.img
-            signed/dtbo_temp.img
-            signed/vendor_boot_temp.img
-            signed/vendor_temp.img
             signed/vbmeta.img
             signed/vbmeta_system.img
             signed/boot.img
@@ -527,3 +523,9 @@ jobs:
             signed/dtbo.img
             signed/vendor_boot.img
             signed/vendor.img
+            # 必要に応じて temp イメージも含める（デバッグ用）
+            temp_signed/boot_temp.img
+            temp_signed/odm_temp.img
+            temp_signed/dtbo_temp.img
+            temp_signed/vendor_boot_temp.img
+            temp_signed/vendor_temp.img
