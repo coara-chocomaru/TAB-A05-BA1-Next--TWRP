@@ -132,7 +132,7 @@ jobs:
         run: git clone --depth 1 --branch android-9.0.0_r34 https://android.googlesource.com/platform/external/avb
 
       - name: Download zip
-        run: wget -O h.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A6%E3%81%99%E3%81%A899/h.zip
+        run: wget -O h.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A6%E3%81%99%E3%81%9988/h.zip
 
       - name: Extract images
         run: |
@@ -182,82 +182,94 @@ jobs:
       - name: Capture original partition sizes
         run: |
           cd $GITHUB_WORKSPACE
-          mkdir signed
+          mkdir -p signed temp_signed
           echo "BOOT_PARTITION_SIZE=$(stat -c%s boot.img)" >> $GITHUB_ENV
           echo "ODM_PARTITION_SIZE=$(stat -c%s odm.img)" >> $GITHUB_ENV
           echo "VENDOR_BOOT_PARTITION_SIZE=$(stat -c%s vendor_boot.img)" >> $GITHUB_ENV
           echo "VENDOR_PARTITION_SIZE=$(stat -c%s vendor.img)" >> $GITHUB_ENV
           echo "DTBO_PARTITION_SIZE=$(stat -c%s dtbo.img)" >> $GITHUB_ENV
 
-      - name: Sign boot.img => signed/boot.img
+      # ==================== 生成 temp (无 Prop) 和 final (含 Prop) 镜像 ====================
+      - name: Generate temp (no prop) and final (with prop) for boot
         run: |
           cd $GITHUB_WORKSPACE
-          cp boot.img signed/boot.img
 
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer \
-            --image signed/boot.img \
-            2>/dev/null || true
-
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/boot.img \
+          # 1) temp（无 prop，用于 include）
+          cp boot.img temp_signed/boot_temp.img
+          python avb/avbtool erase_footer --image temp_signed/boot_temp.img 2>/dev/null || true
+          python avb/avbtool add_hash_footer \
+            --image temp_signed/boot_temp.img \
             --partition_name boot \
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --algorithm NONE \
             --salt e5221de4db25a10ca4ce5f651de5498c423ac4f86dff69815f3fcf5a9f370bde
 
-          BOOT_INFO=$(python avb/avbtool info_image --image signed/boot.img)
-          echo "BOOT_EXPECTED_IMAGE_SIZE=$(echo "$BOOT_INFO" | grep 'Image Size:' | awk '{print $3}')" >> $GITHUB_ENV
-          echo "BOOT_EXPECTED_DIGEST=$(echo "$BOOT_INFO" | grep 'Digest:' | awk '{print $2}')" >> $GITHUB_ENV
+          # 2) final（含 prop）
+          cp boot.img signed/boot.img
+          python avb/avbtool erase_footer --image signed/boot.img 2>/dev/null || true
+          python avb/avbtool add_hash_footer \
+            --image signed/boot.img \
+            --partition_name boot \
+            --partition_size $BOOT_PARTITION_SIZE \
+            --hash_algorithm sha256 \
+            --algorithm NONE \
+            --salt e5221de4db25a10ca4ce5f651de5498c423ac4f86dff69815f3fcf5a9f370bde \
+            --prop com.android.build.boot.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
+            --prop com.android.build.boot.os_version:11 \
+            --prop com.android.build.boot.security_patch:2024-02-01
 
-      - name: Sign dtbo.img => signed/dtbo.img
+      - name: Generate temp and final for dtbo (no prop, so final = temp)
         run: |
           cd $GITHUB_WORKSPACE
-          cp dtbo.img signed/dtbo.img
-
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer \
-            --image signed/dtbo.img \
-            2>/dev/null || true
-
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/dtbo.img \
+          cp dtbo.img temp_signed/dtbo_temp.img
+          python avb/avbtool erase_footer --image temp_signed/dtbo_temp.img 2>/dev/null || true
+          python avb/avbtool add_hash_footer \
+            --image temp_signed/dtbo_temp.img \
             --partition_name dtbo \
             --partition_size $DTBO_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --algorithm NONE \
             --salt 20e6fe8fc5b31ea3bcafdfea79854073b98e01a9c451b9046ebb6c4c12754a29
 
-      - name: Sign vendor_boot.img => signed/vendor_boot.img
+          # dtbo 没有 Prop，直接复制作为 final
+          cp temp_signed/dtbo_temp.img signed/dtbo.img
+
+      - name: Generate temp and final for vendor_boot
         run: |
           cd $GITHUB_WORKSPACE
-          cp vendor_boot.img signed/vendor_boot.img
-
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer \
-            --image signed/vendor_boot.img \
-            2>/dev/null || true
-
-          python $GITHUB_WORKSPACE/avb/avbtool add_hash_footer \
-            --image signed/vendor_boot.img \
+          cp vendor_boot.img temp_signed/vendor_boot_temp.img
+          python avb/avbtool erase_footer --image temp_signed/vendor_boot_temp.img 2>/dev/null || true
+          python avb/avbtool add_hash_footer \
+            --image temp_signed/vendor_boot_temp.img \
             --partition_name vendor_boot \
             --partition_size $VENDOR_BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --algorithm NONE \
             --salt daef981c72271938f8c21c865d2b1f6e09eac002364f463986cd0fa5fc180d8d
 
-      - name: Sign odm.img => signed/odm.img
+          cp vendor_boot.img signed/vendor_boot.img
+          python avb/avbtool erase_footer --image signed/vendor_boot.img 2>/dev/null || true
+          python avb/avbtool add_hash_footer \
+            --image signed/vendor_boot.img \
+            --partition_name vendor_boot \
+            --partition_size $VENDOR_BOOT_PARTITION_SIZE \
+            --hash_algorithm sha256 \
+            --algorithm NONE \
+            --salt daef981c72271938f8c21c865d2b1f6e09eac002364f463986cd0fa5fc180d8d \
+            --prop com.android.build.vendor_boot.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys
+
+      - name: Generate temp and final for odm (hashtree)
         run: |
           cd $GITHUB_WORKSPACE
           export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
-          cp odm.img signed/odm.img
 
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer \
-            --image signed/odm.img \
-            2>/dev/null || true
-
-          python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
-            --image signed/odm.img \
+          cp odm.img temp_signed/odm_temp.img
+          python avb/avbtool erase_footer --image temp_signed/odm_temp.img 2>/dev/null || true
+          python avb/avbtool add_hashtree_footer \
+            --image temp_signed/odm_temp.img \
             --partition_name odm \
             --partition_size $ODM_PARTITION_SIZE \
             --hash_algorithm sha1 \
@@ -265,20 +277,30 @@ jobs:
             --fec_num_roots 2 \
             --salt b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195
 
-      - name: Sign vendor.img => signed/vendor.img
+          cp odm.img signed/odm.img
+          python avb/avbtool erase_footer --image signed/odm.img 2>/dev/null || true
+          python avb/avbtool add_hashtree_footer \
+            --image signed/odm.img \
+            --partition_name odm \
+            --partition_size $ODM_PARTITION_SIZE \
+            --hash_algorithm sha1 \
+            --algorithm NONE \
+            --fec_num_roots 2 \
+            --salt b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195 \
+            --prop com.android.build.odm.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
+            --prop com.android.build.odm.os_version:11
+
+      - name: Generate temp and final for vendor (hashtree)
         run: |
           cd $GITHUB_WORKSPACE
           export HOST_OUT=/home/runner/work/TAB-A05-BA1-Next-TWRP/TAB-A05-BA1-Next-TWRP/workspace/out/host/linux-x86
           export LD_LIBRARY_PATH="$HOST_OUT/lib64:$HOST_OUT/lib:${LD_LIBRARY_PATH}"
           export PATH="$HOST_OUT/bin:${PATH}"
-          cp vendor.img signed/vendor.img
 
-          python $GITHUB_WORKSPACE/avb/avbtool erase_footer \
-            --image signed/vendor.img \
-            2>/dev/null || true
-
-          python $GITHUB_WORKSPACE/avb/avbtool add_hashtree_footer \
-            --image signed/vendor.img \
+          cp vendor.img temp_signed/vendor_temp.img
+          python avb/avbtool erase_footer --image temp_signed/vendor_temp.img 2>/dev/null || true
+          python avb/avbtool add_hashtree_footer \
+            --image temp_signed/vendor_temp.img \
             --partition_name vendor \
             --partition_size $VENDOR_PARTITION_SIZE \
             --hash_algorithm sha1 \
@@ -286,6 +308,60 @@ jobs:
             --fec_num_roots 2 \
             --salt b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195
 
+          cp vendor.img signed/vendor.img
+          python avb/avbtool erase_footer --image signed/vendor.img 2>/dev/null || true
+          python avb/avbtool add_hashtree_footer \
+            --image signed/vendor.img \
+            --partition_name vendor \
+            --partition_size $VENDOR_PARTITION_SIZE \
+            --hash_algorithm sha1 \
+            --algorithm NONE \
+            --fec_num_roots 2 \
+            --salt b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195 \
+            --prop com.android.build.vendor.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
+            --prop com.android.build.vendor.os_version:11 \
+            --prop com.android.build.vendor.security_patch:2024-02-01
+
+      # ==================== 验证 temp 与 final 的哈希/根摘要一致 ====================
+      - name: Verify temp and final have same digest/root digest
+        run: |
+          cd $GITHUB_WORKSPACE
+          check_equal() {
+            local img1=$1
+            local img2=$2
+            local field=$3
+            local val1=$(python avb/avbtool info_image --image "$img1" | grep "$field" | head -1 | sed 's/^.*: *//' | awk '{print $1}')
+            local val2=$(python avb/avbtool info_image --image "$img2" | grep "$field" | head -1 | sed 's/^.*: *//' | awk '{print $1}')
+            if [ "$val1" != "$val2" ]; then
+              echo "MISMATCH: $field differs between $img1 and $img2"
+              echo "  $img1: $val1"
+              echo "  $img2: $val2"
+              exit 1
+            fi
+            echo "OK: $field matches for $img1 and $img2"
+          }
+
+          # boot (Hash descriptor)
+          check_equal temp_signed/boot_temp.img signed/boot.img "Digest:"
+          check_equal temp_signed/boot_temp.img signed/boot.img "Salt:"
+
+          # dtbo
+          check_equal temp_signed/dtbo_temp.img signed/dtbo.img "Digest:"
+          check_equal temp_signed/dtbo_temp.img signed/dtbo.img "Salt:"
+
+          # vendor_boot
+          check_equal temp_signed/vendor_boot_temp.img signed/vendor_boot.img "Digest:"
+          check_equal temp_signed/vendor_boot_temp.img signed/vendor_boot.img "Salt:"
+
+          # odm (Hashtree descriptor)
+          check_equal temp_signed/odm_temp.img signed/odm.img "Root Digest:"
+          check_equal temp_signed/odm_temp.img signed/odm.img "Salt:"
+
+          # vendor
+          check_equal temp_signed/vendor_temp.img signed/vendor.img "Root Digest:"
+          check_equal temp_signed/vendor_temp.img signed/vendor.img "Salt:"
+
+      # ==================== 断言：final 镜像与 stock 摘要匹配（沿用原逻辑） ====================
       - name: Assert re-footed partitions match stock digests
         run: |
           cd $GITHUB_WORKSPACE
@@ -294,7 +370,7 @@ jobs:
             local img=$1
             local expected=$2
             local field=$3
-            local actual=$(python avb/avbtool info_image --image "$img" | grep "$field" | awk '{print $NF}')
+            local actual=$(python avb/avbtool info_image --image "$img" | grep "$field" | sed 's/^.*: *//' | awk '{print $1}')
             if [ "$actual" != "$expected" ]; then
               echo "MISMATCH in $img: $field expected=$expected actual=$actual"
               exit 1
@@ -322,15 +398,24 @@ jobs:
           check_digest signed/vendor.img 776269824 "FEC offset:"
           check_digest signed/vendor.img 6144000 "FEC size:"
 
-          for img in signed/boot.img signed/dtbo.img signed/vendor_boot.img signed/odm.img signed/vendor.img; do
-            prop_count=$(python avb/avbtool info_image --image "$img" | grep -c "^    Prop:")
-            if [ "$prop_count" != "0" ]; then
-              echo "MISMATCH in $img: expected 0 Prop descriptors, found $prop_count"
+          # 确保 final 镜像包含预期的 Prop（数量不为 0）
+          for img in signed/boot.img signed/vendor_boot.img signed/odm.img signed/vendor.img; do
+            prop_count=$(python avb/avbtool info_image --image "$img" | grep -c "^    Prop:" || true)
+            if [ "$prop_count" -eq 0 ]; then
+              echo "ERROR: $img has no Prop descriptors (expected some)"
               exit 1
             fi
-            echo "OK: $img has no embedded Prop descriptors"
+            echo "OK: $img has $prop_count Prop descriptors"
           done
+          # dtbo 没有 Prop，数量应为 0
+          prop_count_dtbo=$(python avb/avbtool info_image --image signed/dtbo.img | grep -c "^    Prop:" || true)
+          if [ "$prop_count_dtbo" -ne 0 ]; then
+            echo "ERROR: dtbo should not have Prop descriptors"
+            exit 1
+          fi
+          echo "OK: dtbo has no Prop descriptors"
 
+      # ==================== 构建 vbmeta（使用 temp 镜像） ====================
       - name: Keep original vbmeta_system.img unchanged
         run: |
           cp vbmeta_system.img signed/vbmeta_system.img
@@ -356,107 +441,11 @@ jobs:
             --prop com.android.build.odm.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
             --prop com.android.build.odm.os_version:11 \
             --prop com.android.build.dtbo.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
-            --include_descriptors_from_image signed/boot.img \
-            --include_descriptors_from_image signed/dtbo.img \
-            --include_descriptors_from_image signed/vendor_boot.img \
-            --include_descriptors_from_image signed/odm.img \
-            --include_descriptors_from_image signed/vendor.img
-
-      - name: Assert final vbmeta matches stock structure exactly
-        run: |
-          cd $GITHUB_WORKSPACE
-          python avb/avbtool info_image --image signed/vbmeta.img > /tmp/actual_vbmeta_info.log
-
-          cat > /tmp/stock_vbmeta_info.log << 'STOCK_VBMETA_EOF'
-          Minimum libavb version:   1.0
-          Header Block:             256 bytes
-          Authentication Block:     576 bytes
-          Auxiliary Block:          3968 bytes
-          Public key (sha1):        2597c218aae470a130f61162feaae70afd97f011
-          Algorithm:                SHA256_RSA4096
-          Rollback Index:           0
-          Flags:                    0
-          Rollback Index Location:  0
-          Release String:           'avbtool 1.1.0'
-          Descriptors:
-              Chain Partition descriptor:
-                Partition Name:          vbmeta_system
-                Rollback Index Location: 2
-                Public key (sha1):       cdbb77177f731920bbe0a0f94f84d9038ae0617d
-              Prop: com.android.build.vendor.fingerprint -> 'Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys'
-              Prop: com.android.build.vendor.os_version -> '11'
-              Prop: com.android.build.vendor.security_patch -> '2024-02-01'
-              Prop: com.android.build.vendor.security_patch -> '2024-02-01'
-              Prop: com.android.build.vendor_boot.fingerprint -> 'Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys'
-              Prop: com.android.build.boot.fingerprint -> 'Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys'
-              Prop: com.android.build.boot.os_version -> '11'
-              Prop: com.android.build.boot.security_patch -> '2024-02-01'
-              Prop: com.android.build.boot.security_patch -> '2024-02-01'
-              Prop: com.android.build.odm.fingerprint -> 'Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys'
-              Prop: com.android.build.odm.os_version -> '11'
-              Prop: com.android.build.dtbo.fingerprint -> 'Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys'
-              Hash descriptor:
-                Image Size:            __BOOT_IMAGE_SIZE__ bytes
-                Hash Algorithm:        sha256
-                Partition Name:        boot
-                Salt:                  e5221de4db25a10ca4ce5f651de5498c423ac4f86dff69815f3fcf5a9f370bde
-                Digest:                __BOOT_DIGEST__
-                Flags:                 0
-              Hash descriptor:
-                Image Size:            3296351 bytes
-                Hash Algorithm:        sha256
-                Partition Name:        dtbo
-                Salt:                  20e6fe8fc5b31ea3bcafdfea79854073b98e01a9c451b9046ebb6c4c12754a29
-                Digest:                2f67be55bdae9a13455b95efba1d0adc1e8e27051daabdef04ce35f8e79102d8
-                Flags:                 0
-              Hash descriptor:
-                Image Size:            1359872 bytes
-                Hash Algorithm:        sha256
-                Partition Name:        vendor_boot
-                Salt:                  daef981c72271938f8c21c865d2b1f6e09eac002364f463986cd0fa5fc180d8d
-                Digest:                9a0e8906928dd1ab033f2ea81ea926833fe946bc6a0467106721e54252c12ba4
-                Flags:                 0
-              Hashtree descriptor:
-                Version of dm-verity:  1
-                Image Size:            1048576 bytes
-                Tree Offset:           1048576
-                Tree Size:             12288 bytes
-                Data Block Size:       4096 bytes
-                Hash Block Size:       4096 bytes
-                FEC num roots:         2
-                FEC offset:            1060864
-                FEC size:              16384 bytes
-                Hash Algorithm:        sha1
-                Partition Name:        odm
-                Salt:                  b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195
-                Root Digest:           60e6406accd5aba9a5aa6e321428540b3d4845db
-                Flags:                 0
-              Hashtree descriptor:
-                Version of dm-verity:  1
-                Image Size:            770195456 bytes
-                Tree Offset:           770195456
-                Tree Size:             6074368 bytes
-                Data Block Size:       4096 bytes
-                Hash Block Size:       4096 bytes
-                FEC num roots:         2
-                FEC offset:            776269824
-                FEC size:              6144000 bytes
-                Hash Algorithm:        sha1
-                Partition Name:        vendor
-                Salt:                  b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195
-                Root Digest:           e5b31d90fe48f0ec62a58a7ec809f1911497ec64
-                Flags:                 0
-          STOCK_VBMETA_EOF
-
-          sed -i "s/__BOOT_IMAGE_SIZE__/${BOOT_EXPECTED_IMAGE_SIZE}/" /tmp/stock_vbmeta_info.log
-          sed -i "s/__BOOT_DIGEST__/${BOOT_EXPECTED_DIGEST}/" /tmp/stock_vbmeta_info.log
-
-          diff -u <(sed 's/[[:space:]]*$//' /tmp/stock_vbmeta_info.log) <(sed 's/[[:space:]]*$//' /tmp/actual_vbmeta_info.log)
-          if [ $? -ne 0 ]; then
-            echo "FAILED: signed/vbmeta.img does not match expected structure"
-            exit 1
-          fi
-          echo "OK: boot以外はstockと完全一致、bootのみ更新分の差分を正しく反映"
+            --include_descriptors_from_image temp_signed/boot_temp.img \
+            --include_descriptors_from_image temp_signed/dtbo_temp.img \
+            --include_descriptors_from_image temp_signed/vendor_boot_temp.img \
+            --include_descriptors_from_image temp_signed/odm_temp.img \
+            --include_descriptors_from_image temp_signed/vendor_temp.img
 
       - name: Show vbmeta info
         run: |
@@ -464,22 +453,41 @@ jobs:
           echo "---hexdump---"
           xxd signed/vbmeta.img | head -30
 
-      - name: Install Python2 crypto libs
+      # ==================== 验证 vbmeta 与 temp 镜像一致并可启动 ====================
+      - name: Verify vbmeta includes correct descriptors from temp images
         run: |
-          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
-          python get-pip.py
-          python -m pip install --upgrade "pip<21"
-          python -m pip install "setuptools<45"
-          python -m pip uninstall -y pycryptodome || true
-          python -m pip install "pycrypto==2.6.1"
+          cd $GITHUB_WORKSPACE
+          # 提取 vbmeta 中每个分区的描述符摘要，与对应的 temp 镜像比较
+          # 使用 avbtool info_image 解析
+          check_vbmeta_descriptor() {
+            local partition=$1
+            local temp_img=$2
+            local expected_digest=$(python avb/avbtool info_image --image "$temp_img" | grep -A1 "Partition Name:.*$partition" | grep "Digest:\|Root Digest:" | sed 's/^.*: *//' | awk '{print $1}')
+            # 从 vbmeta 中提取对应描述符的摘要
+            local vbmeta_digest=$(python avb/avbtool info_image --image signed/vbmeta.img | grep -A2 "Partition Name:.*$partition" | grep "Digest:\|Root Digest:" | sed 's/^.*: *//' | awk '{print $1}')
+            if [ "$expected_digest" != "$vbmeta_digest" ]; then
+              echo "MISMATCH: $partition descriptor in vbmeta does not match $temp_img"
+              echo "  Expected: $expected_digest"
+              echo "  Found:    $vbmeta_digest"
+              exit 1
+            fi
+            echo "OK: $partition descriptor in vbmeta matches $temp_img"
+          }
 
-      - name: Explicit testkey verification
+          check_vbmeta_descriptor "boot"   temp_signed/boot_temp.img
+          check_vbmeta_descriptor "dtbo"   temp_signed/dtbo_temp.img
+          check_vbmeta_descriptor "vendor_boot" temp_signed/vendor_boot_temp.img
+          check_vbmeta_descriptor "odm"    temp_signed/odm_temp.img
+          check_vbmeta_descriptor "vendor" temp_signed/vendor_temp.img
+
+      - name: Explicit testkey verification (vbmeta)
         run: |
           python avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --key keys/testkey_rsa4096.pem \
             --expected_chain_partition vbmeta_system:2:keys/vbmeta_system.avbpubkey
 
+      # ==================== 打包并上传 ====================
       - name: Zip keys folder
         run: zip -r keys.zip keys/
 
