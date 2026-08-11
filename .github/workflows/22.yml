@@ -131,11 +131,8 @@ jobs:
           sudo chmod +x /usr/local/bin/fec
           fec --version || fec --help || true
 
-      - name: Clone avbtool 1.1.0 from AOSP android-9.0.0_r34
-        run: git clone --depth 1 --branch android-11.0.0_r31 https://android.googlesource.com/platform/external/avb
-
       - name: Download zip
-        run: wget -O h.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A6%E3%81%99%E3%81%9988/h.zip
+        run: wget -O h.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A6%E3%81%99%E3%81%A899/h.zip
 
       - name: Extract images
         run: |
