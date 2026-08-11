@@ -139,6 +139,12 @@ jobs:
         run: |
           7z x h.zip -o. -aoa -y
           ls -la *.img   
+
+      - name: Switch to Python 2
+        run: |
+          sudo apt -y install python2
+          sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
+          python --version
       
       - name: info dtbo
         run: |
@@ -167,7 +173,7 @@ jobs:
       - name: info vbmeta_system
         run: |
          python avb/avbtool info_image --image vbmeta_system.img
-      
+
       - name: Extract public keys for all signing keys
         run: |
             python avb/avbtool extract_public_key --key keys/testkey_rsa2048.pem --output keys/vbmeta_system.avbpubkey
@@ -178,6 +184,7 @@ jobs:
       - name: Capture original partition sizes
         run: |
           cd $GITHUB_WORKSPACE
+          mkdir signed
           echo "BOOT_PARTITION_SIZE=$(stat -c%s boot.img)" >> $GITHUB_ENV
           echo "ODM_PARTITION_SIZE=$(stat -c%s odm.img)" >> $GITHUB_ENV
           echo "VENDOR_BOOT_PARTITION_SIZE=$(stat -c%s vendor_boot.img)" >> $GITHUB_ENV
@@ -201,6 +208,10 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cp odm.img signed/odm.img
+
+      - name: Keep original vbmeta_system.img unchanged
+        run: |
+          cp vbmeta_system.img signed/vbmeta_system.img
 
       - name: Sign vendor_boot.img => signed/vendor_boot.img
         run: |
@@ -230,18 +241,7 @@ jobs:
             --include_descriptors_from_image signed/dtbo.img \
             --include_descriptors_from_image signed/vendor_boot.img \
             --include_descriptors_from_image signed/odm.img \
-            --include_descriptors_from_image signed/vendor.img \
-            --prop com.android.build.vendor.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
-            --prop com.android.build.vendor.os_version:11 \
-            --prop com.android.build.vendor.security_patch:2024-02-01 \
-            --prop com.android.build.vendor_boot.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
-            --prop com.android.build.boot.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
-            --prop com.android.build.boot.os_version:11 \
-            --prop com.android.build.boot.security_patch:2024-02-01 \
-            --prop com.android.build.odm.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
-            --prop com.android.build.odm.os_version:11 \
-            --prop com.android.build.dtbo.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys
-           
+            --include_descriptors_from_image signed/vendor.img          
 
       - name: Show vbmeta info
         run: |
@@ -257,12 +257,6 @@ jobs:
           python -m pip install "setuptools<45"
           python -m pip uninstall -y pycryptodome || true
           python -m pip install "pycrypto==2.6.1"
-
-      - name: Verify vbmeta_system.img with original signing key
-        run: |
-          python avb/avbtool verify_image \
-          --image signed/vbmeta_system.img \
-          --key keys/testkey_rsa2048.pem    
           
       - name: Explicit testkey verification
         run: |
