@@ -132,7 +132,7 @@ jobs:
         run: git clone --depth 1 --branch android-9.0.0_r34 https://android.googlesource.com/platform/external/avb
 
       - name: Download zip
-        run: wget -O h.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A6%E3%81%99%E3%81%A899/h.zip
+        run: wget -O h.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A6%E3%81%99%E3%81%9988/h.zip
 
       - name: Extract images
         run: |
@@ -214,11 +214,13 @@ jobs:
             --salt e5221de4db25a10ca4ce5f651de5498c423ac4f86dff69815f3fcf5a9f370bde \
             --prop com.android.build.boot.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
             --prop com.android.build.boot.os_version:11 \
+            --prop com.android.build.boot.security_patch:2024-02-01 \
             --prop com.android.build.boot.security_patch:2024-02-01
 
-      - name: Generate temp and final for dtbo (no prop in stock)
+      - name: Generate temp and final for dtbo (with prop, stock has fingerprint)
         run: |
           cd $GITHUB_WORKSPACE
+          # temp (no prop)
           cp dtbo.img temp_signed/dtbo_temp.img
           python avb/avbtool erase_footer --image temp_signed/dtbo_temp.img 2>/dev/null || true
           python avb/avbtool add_hash_footer \
@@ -228,7 +230,18 @@ jobs:
             --hash_algorithm sha256 \
             --algorithm NONE \
             --salt 20e6fe8fc5b31ea3bcafdfea79854073b98e01a9c451b9046ebb6c4c12754a29
-          cp temp_signed/dtbo_temp.img signed/dtbo.img
+
+          # final (with prop)
+          cp dtbo.img signed/dtbo.img
+          python avb/avbtool erase_footer --image signed/dtbo.img 2>/dev/null || true
+          python avb/avbtool add_hash_footer \
+            --image signed/dtbo.img \
+            --partition_name dtbo \
+            --partition_size $DTBO_PARTITION_SIZE \
+            --hash_algorithm sha256 \
+            --algorithm NONE \
+            --salt 20e6fe8fc5b31ea3bcafdfea79854073b98e01a9c451b9046ebb6c4c12754a29 \
+            --prop com.android.build.dtbo.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys
 
       - name: Generate temp and final for vendor_boot
         run: |
@@ -379,8 +392,8 @@ jobs:
           check_digest signed/vendor.img 776269824 "FEC offset:"
           check_digest signed/vendor.img 6144000 "FEC size:"
 
-          # Prop の存在確認
-          for img in signed/boot.img signed/vendor_boot.img signed/odm.img signed/vendor.img; do
+          # Prop の存在確認 (dtbo にも prop があるため、dtbo も 0 ではない)
+          for img in signed/boot.img signed/dtbo.img signed/vendor_boot.img signed/odm.img signed/vendor.img; do
             prop_count=$(python avb/avbtool info_image --image "$img" | grep -c "^    Prop:" || true)
             if [ "$prop_count" -eq 0 ]; then
               echo "ERROR: $img has no Prop descriptors (expected some)"
@@ -388,12 +401,6 @@ jobs:
             fi
             echo "OK: $img has $prop_count Prop descriptors"
           done
-          prop_count_dtbo=$(python avb/avbtool info_image --image signed/dtbo.img | grep -c "^    Prop:" || true)
-          if [ "$prop_count_dtbo" -ne 0 ]; then
-            echo "ERROR: dtbo should not have Prop descriptors"
-            exit 1
-          fi
-          echo "OK: dtbo has no Prop descriptors"
 
       # ==================== vbmeta の構築（temp イメージを参照） ====================
       - name: Keep original vbmeta_system.img unchanged
@@ -433,24 +440,21 @@ jobs:
           echo "---hexdump---"
           xxd signed/vbmeta.img | head -30
 
-      # ==================== ★★★ 修正済み: vbmeta と temp イメージの記述子を検証 ★★★ ====================
+      # ==================== vbmeta と temp イメージの記述子を検証 (修正済み) ====================
       - name: Verify vbmeta includes correct descriptors from temp images
         run: |
           cd $GITHUB_WORKSPACE
 
-          # (修正済み) awk を使い、パーティション名を完全一致で比較し、Digest / Root Digest を正しく抽出する
           check_vbmeta_descriptor() {
             local partition="$1"
             local temp_img="$2"
 
-            # temp イメージから期待値を取得 (Partition Name: 完全一致 -> Digest/Root Digest の最終フィールド)
             local expected_digest=$(python avb/avbtool info_image --image "$temp_img" | \
               awk -v p="$partition" '
                 $0 ~ "Partition Name: " p { found=1 }
                 found && /(Root )?Digest:/ { print $NF; exit }
               ')
 
-            # vbmeta イメージから実値を取得 (同様のロジック)
             local vbmeta_digest=$(python avb/avbtool info_image --image signed/vbmeta.img | \
               awk -v p="$partition" '
                 $0 ~ "Partition Name: " p { found=1 }
