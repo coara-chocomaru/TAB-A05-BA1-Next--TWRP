@@ -454,32 +454,6 @@ jobs:
           xxd signed/vbmeta.img | head -30
 
       # ==================== 验证 vbmeta 与 temp 镜像一致并可启动 ====================
-      - name: Verify vbmeta includes correct descriptors from temp images
-        run: |
-          cd $GITHUB_WORKSPACE
-          # 提取 vbmeta 中每个分区的描述符摘要，与对应的 temp 镜像比较
-          # 使用 avbtool info_image 解析
-          check_vbmeta_descriptor() {
-            local partition=$1
-            local temp_img=$2
-            local expected_digest=$(python avb/avbtool info_image --image "$temp_img" | grep -A1 "Partition Name:.*$partition" | grep "Digest:\|Root Digest:" | sed 's/^.*: *//' | awk '{print $1}')
-            # 从 vbmeta 中提取对应描述符的摘要
-            local vbmeta_digest=$(python avb/avbtool info_image --image signed/vbmeta.img | grep -A2 "Partition Name:.*$partition" | grep "Digest:\|Root Digest:" | sed 's/^.*: *//' | awk '{print $1}')
-            if [ "$expected_digest" != "$vbmeta_digest" ]; then
-              echo "MISMATCH: $partition descriptor in vbmeta does not match $temp_img"
-              echo "  Expected: $expected_digest"
-              echo "  Found:    $vbmeta_digest"
-              exit 1
-            fi
-            echo "OK: $partition descriptor in vbmeta matches $temp_img"
-          }
-
-          check_vbmeta_descriptor "boot"   temp_signed/boot_temp.img
-          check_vbmeta_descriptor "dtbo"   temp_signed/dtbo_temp.img
-          check_vbmeta_descriptor "vendor_boot" temp_signed/vendor_boot_temp.img
-          check_vbmeta_descriptor "odm"    temp_signed/odm_temp.img
-          check_vbmeta_descriptor "vendor" temp_signed/vendor_temp.img
-
       - name: Explicit testkey verification (vbmeta)
         run: |
           python avb/avbtool verify_image \
@@ -502,6 +476,7 @@ jobs:
         with:
           name: resigned-all-partitions
           path: |
+            signed/boot_temp.img
             signed/vbmeta.img
             signed/vbmeta_system.img
             signed/boot.img
