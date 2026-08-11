@@ -173,10 +173,12 @@ jobs:
         run: |
           python avb/avbtool info_image --image vbmeta_system.img
 
-      - name: Extract public keys for all signing keys
+      - name: Extract public key for vbmeta_system
         run: |
-          python avb/avbtool extract_public_key --key keys/testkey_rsa2048.pem --output keys/vbmeta_system.avbpubkey
-
+          python avb/avbtool extract_public_key \
+            --key keys/testkey_rsa2048.pem \
+            --output keys/vbmeta_system.avbpubkey
+            
       - name: Capture original partition sizes
         run: |
           cd $GITHUB_WORKSPACE
