@@ -132,20 +132,13 @@ jobs:
       - name: Clone avbtool 1.1.0 from AOSP android-9.0.0_r34
         run: git clone --depth 1 --branch android-9.0.0_r34 https://android.googlesource.com/platform/external/avb
 
-      - name: Download Neo.zip
-        run: wget -O Next.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A7%E3%83%BC%E3%81%9F2/test.zip
+      - name: Download zip
+        run: wget -O h.zip https://github.com/coara-chocomaru/monooki/releases/download/%E3%81%A6%E3%81%99%E3%81%A899/h.zip
 
       - name: Extract images
         run: |
-           7z x Next.zip -o. -aoa -y
-           if [ -d Next ]; then
-           mv Next/*.img . 2>/dev/null || true
-           rmdir Next 2>/dev/null || true
-           fi
-           ls -la *.img
-          
-      - name: Create working directories
-        run: mkdir -p signed keys      
+          7z x h.zip -o. -aoa -y
+          ls -la *.img   
       
       - name: info dtbo
         run: |
@@ -202,7 +195,7 @@ jobs:
             --partition_size $BOOT_PARTITION_SIZE \
             --hash_algorithm sha256 \
             --algorithm NONE \
-            --salt $FIXED_SALT
+            --salt e5221de4db25a10ca4ce5f651de5498c423ac4f86dff69815f3fcf5a9f370bde
             
       - name: Sign odm.img => signed/odm.img
         run: |
@@ -274,9 +267,8 @@ jobs:
           python avb/avbtool verify_image \
             --image signed/vbmeta.img \
             --key keys/vbmeta.pem \
-            --expected_chain_partition recovery:1:keys/recovery.avbpubkey \
-            --expected_chain_partition system:2:keys/system.avbpubkey
-
+            --expected_chain_partition vbmeta_system:2:keys/vbmeta_system.avbpubkey
+            
       - name: Zip keys folder
         run: zip -r keys.zip keys/
 
