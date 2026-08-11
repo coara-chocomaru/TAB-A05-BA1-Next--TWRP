@@ -257,6 +257,8 @@ jobs:
             --partition_size $ODM_PARTITION_SIZE \
             --hash_algorithm sha1 \
             --algorithm NONE \
+            --generate_fec \
+            --fec_num_roots 2 \
             --salt b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195
 
       - name: Sign vendor.img => signed/vendor.img
@@ -274,6 +276,8 @@ jobs:
             --partition_size $VENDOR_PARTITION_SIZE \
             --hash_algorithm sha1 \
             --algorithm NONE \
+            --generate_fec \
+            --fec_num_roots 2 \
             --salt b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195
 
       - name: Assert re-footed partitions match stock digests
@@ -306,6 +310,11 @@ jobs:
             fi
             echo "OK: $img FEC num roots=$fec_roots"
           done
+
+          check_digest signed/odm.img 1060864 "FEC offset:"
+          check_digest signed/odm.img 16384 "FEC size:"
+          check_digest signed/vendor.img 776269824 "FEC offset:"
+          check_digest signed/vendor.img 6144000 "FEC size:"
 
           for img in signed/boot.img signed/dtbo.img signed/vendor_boot.img signed/odm.img signed/vendor.img; do
             prop_count=$(python avb/avbtool info_image --image "$img" | grep -c "^    Prop:")
