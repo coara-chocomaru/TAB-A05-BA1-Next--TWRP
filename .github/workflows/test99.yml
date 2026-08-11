@@ -99,9 +99,9 @@ jobs:
 
       - name: Move files to workspace
         run: |
-          mkdir -p workspace/${{ env.DEVICE_PATH }}
-          ls | grep -v workspace | xargs -I{} mv {} workspace/${{ env.DEVICE_PATH }}
-
+         mkdir -p workspace/${{ env.DEVICE_PATH }}
+         ls | grep -v -E 'workspace|keys' | xargs -I{} mv {} workspace/${{ env.DEVICE_PATH }}
+        
       - name: Set Swap Space
         uses: pierotofy/set-swap-space@master
         with:
