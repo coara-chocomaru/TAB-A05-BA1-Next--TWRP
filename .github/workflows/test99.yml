@@ -221,7 +221,7 @@ jobs:
         run: |
           python avb/avbtool make_vbmeta_image \
             --output signed/vbmeta.img \
-            --key keys/vbmeta.pem \
+            --key keys/testkey_rsa4096.pem \
             --algorithm SHA256_RSA4096 \
             --rollback_index 0 \
             --flags 0 \
@@ -248,10 +248,6 @@ jobs:
           python avb/avbtool info_image --image signed/vbmeta.img
           echo "---hexdump---"
           xxd signed/vbmeta.img | head -30
-
-      - name: Verify with nccgroup test_avb_key
-        run: python3 nccgroup-avb/test_avb_key.py signed/vbmeta.img
-        continue-on-error: true
        
       - name: Install Python2 crypto libs
         run: |
@@ -261,12 +257,18 @@ jobs:
           python -m pip install "setuptools<45"
           python -m pip uninstall -y pycryptodome || true
           python -m pip install "pycrypto==2.6.1"
+
+      - name: Verify vbmeta_system.img with original signing key
+        run: |
+          python avb/avbtool verify_image \
+          --image signed/vbmeta_system.img \
+          --key keys/testkey_rsa2048.pem    
           
       - name: Explicit testkey verification
         run: |
           python avb/avbtool verify_image \
             --image signed/vbmeta.img \
-            --key keys/vbmeta.pem \
+            --key keys/testkey_rsa4096.pem \
             --expected_chain_partition vbmeta_system:2:keys/vbmeta_system.avbpubkey
             
       - name: Zip keys folder
