@@ -77,8 +77,8 @@ jobs:
              libsdl1.2-dev libwxgtk3.2-dev libxml2 lzop pngcrush \
              schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp \
              qemu-user-static libstdc++-10-dev \
-             openssl python-is-python3 git wget xxd python3-cryptography zip curl \
-             python3-pycryptodome
+             openssl python3 git wget xxd python3-cryptography zip curl \
+             python3-pycryptodome python2.7 python2.7-dev
 
       - name: Install OpenJDK
         uses: actions/setup-java@v3
