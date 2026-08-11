@@ -231,9 +231,12 @@ jobs:
             --key keys/vbmeta.pem \
             --algorithm SHA256_RSA4096 \
             --chain_partition vbmeta_system:1:keys/vbmeta_system.avbpubkey \
-            --include_descriptors_from_image signed/vendor.img \
+            --include_descriptors_from_image signed/boot.img \
             --include_descriptors_from_image signed/dtbo.img \
-            --include_descriptors_from_image signed/boot.img
+            --include_descriptors_from_image signed/vendor_boot.img \
+            --include_descriptors_from_image signed/odm.img \
+            --include_descriptors_from_image signed/vendor.img
+            
 
       - name: Show vbmeta info
         run: |
