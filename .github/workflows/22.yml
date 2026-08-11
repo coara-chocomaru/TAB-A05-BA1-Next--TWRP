@@ -123,9 +123,7 @@ jobs:
         run: |
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
-          lunch ${{ env.MAKEFILE_NAME }}-eng
-          make clean
-          make fec -j$(nproc --all)
+          lunch ${{ github.event.inputs.MAKEFILE_NAME }}-eng && make clean && make fec -j$(nproc --all)
 
       - name: Install built fec to PATH
         run: |
