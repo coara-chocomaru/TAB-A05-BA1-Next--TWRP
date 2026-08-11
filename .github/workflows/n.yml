@@ -345,6 +345,7 @@ jobs:
             --algorithm SHA256_RSA4096 \
             --rollback_index 0 \
             --flags 0 \
+            --rollback_index_location 0 \
             --chain_partition vbmeta_system:2:keys/vbmeta_system.avbpubkey \
             --prop com.android.build.vendor.fingerprint:Rakuten/P780/P780:11/RKQ1.210715.001/264:user/release-keys \
             --prop com.android.build.vendor.os_version:11 \
