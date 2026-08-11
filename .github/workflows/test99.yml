@@ -260,7 +260,6 @@ jobs:
             --partition_size $ODM_PARTITION_SIZE \
             --hash_algorithm sha1 \
             --algorithm NONE \
-            --generate_fec \
             --fec_num_roots 2 \
             --salt b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195
 
@@ -282,7 +281,6 @@ jobs:
             --partition_size $VENDOR_PARTITION_SIZE \
             --hash_algorithm sha1 \
             --algorithm NONE \
-            --generate_fec \
             --fec_num_roots 2 \
             --salt b8055364fe0aeed890e478d3a486b15972da56cde14724fe4a84f9d6ea1d1195
 
