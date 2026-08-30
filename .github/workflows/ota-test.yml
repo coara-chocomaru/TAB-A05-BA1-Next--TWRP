@@ -1,13 +1,10 @@
-name: Reboot OTA ZIP Builder (No Build, Pure Script)
+name: Reboot OTA ZIP Builder (No Sign, No Build)
 
 on:
   push:
     branches:
       - yoko
   workflow_dispatch:
-
-env:
-  DEVICE_NAME: 'a05ba'  # リリース名に使うだけ
 
 jobs:
   build:
@@ -16,7 +13,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Prepare workspace
+      - name: Create OTA ZIP structure
         run: |
           mkdir -p workspace/zip_root/META-INF/com/google/android
 
@@ -24,111 +21,37 @@ jobs:
         run: |
           cat > workspace/zip_root/META-INF/com/google/android/update-binary << 'EOF'
           #!/sbin/sh
-          # -----------------------------------------------
-          # 超手抜き OTA ZIP - Reboot to Bootloader
-          # -----------------------------------------------
-          ui_print() {
-            echo "ui_print $*" > /proc/self/fd/1
-            echo "ui_print" > /proc/self/fd/1
-          }
-
+          ui_print() { echo "ui_print $*" > /proc/self/fd/1; echo "ui_print" > /proc/self/fd/1; }
           ui_print "***********************************************"
           ui_print "*  Reboot to Bootloader (Script Version)     *"
           ui_print "***********************************************"
-
-          # 方法1: reboot コマンド（TWRP に存在）
-          if command -v reboot >/dev/null 2>&1; then
-            ui_print "Attempt 1: reboot bootloader"
-            reboot bootloader && exit 0
-          fi
-
-          # 方法2: /sbin/reboot（直接パス）
-          if [ -x /sbin/reboot ]; then
-            ui_print "Attempt 2: /sbin/reboot bootloader"
-            /sbin/reboot bootloader && exit 0
-          fi
-
-          # 方法3: setprop（init 経由）
-          ui_print "Attempt 3: setprop sys.powerctl"
-          setprop sys.powerctl reboot,bootloader && exit 0
-
-          # 方法4: /system/bin/reboot（AOSP リカバリに稀に存在）
-          if [ -x /system/bin/reboot ]; then
-            ui_print "Attempt 4: /system/bin/reboot bootloader"
-            /system/bin/reboot bootloader && exit 0
-          fi
-
-          # 全滅
+          reboot bootloader || /sbin/reboot bootloader || setprop sys.powerctl reboot,bootloader || /system/bin/reboot bootloader
           ui_print "ERROR: All reboot methods failed!"
           exit 1
           EOF
-
           chmod 755 workspace/zip_root/META-INF/com/google/android/update-binary
 
-      - name: Create dummy updater-script (empty)
+      - name: Create dummy updater-script
         run: |
-          touch workspace/zip_root/META-INF/com/google/android/updater-script
-          # または何か適当なコメントを入れる
-          echo "# Dummy script (not used)" > workspace/zip_root/META-INF/com/google/android/updater-script
+          echo "# dummy" > workspace/zip_root/META-INF/com/google/android/updater-script
 
-      - name: Package unsigned ZIP
+      - name: Package ZIP (unsigned)
         run: |
           cd workspace/zip_root
-          zip -r9 ../reboot-bootloader-unsigned.zip .
+          zip -r9 ../reboot-bootloader.zip .
           cd ..
-          ls -la reboot-bootloader-unsigned.zip
+          ls -la reboot-bootloader.zip
 
-      - name: Sign ZIP with AOSP testkey (using prebuilt signapk)
-        run: |
-          # 1. signapk.jar と testkey をダウンロード（AOSP の prebuilt から）
-          mkdir -p tools keys
-          # signapk.jar は Android の prebuilts から取得（直接URL）
-          wget -q -O tools/signapk.jar https://android.googlesource.com/platform/prebuilts/sdk/+/master/tools/lib/signapk.jar?format=TEXT || {
-            echo "Download signapk.jar failed, trying alternative..."
-            curl -L -o tools/signapk.jar https://github.com/akhilnarang/prebuilts/raw/master/signapk.jar
-          }
-          # testkey も同様
-          wget -q -O keys/testkey.x509.pem https://android.googlesource.com/platform/build/+/master/target/product/security/testkey.x509.pem?format=TEXT || {
-            echo "Download testkey.x509.pem failed"
-            exit 1
-          }
-          wget -q -O keys/testkey.pk8 https://android.googlesource.com/platform/build/+/master/target/product/security/testkey.pk8?format=TEXT || {
-            echo "Download testkey.pk8 failed"
-            exit 1
-          }
-          # base64デコード（Android Gerrit の ?format=TEXT は base64 で返す）
-          for f in keys/testkey.x509.pem keys/testkey.pk8; do
-            if grep -q "^[A-Za-z0-9+/]" "$f"; then
-              base64 -d "$f" > "$f.dec"
-              mv "$f.dec" "$f"
-            fi
-          done
-
-          # 2. 署名実行
-          java -jar tools/signapk.jar keys/testkey.x509.pem keys/testkey.pk8 \
-            workspace/reboot-bootloader-unsigned.zip \
-            workspace/reboot-bootloader-signed.zip
-
-          # 3. 検証
-          unzip -l workspace/reboot-bootloader-signed.zip | head -20
-
-      - name: Upload signed OTA ZIP to Release
+      - name: Upload ZIP to Release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: workspace/reboot-bootloader-signed.zip
-          name: ${{ env.DEVICE_NAME }}-reboot-ota-script-${{ github.run_id }}
+          files: workspace/reboot-bootloader.zip
+          name: ${{ env.DEVICE_NAME }}-reboot-ota-${{ github.run_id }}
           tag_name: ${{ github.run_id }}
           body: |
-            **究極の手抜き OTA ZIP（ビルド不要・スクリプト版）**
+            **超手抜き OTA ZIP（署名なし・TWRP用）**
             - `update-binary` はシェルスクリプト
-            - `updater-script` はダミー（空）
-            - 署名: AOSP testkey
-            - 動作対象: TWRP / AOSP リカバリー（サイドロード）
-            - 実行ロジック:
-              1. `reboot bootloader`
-              2. `/sbin/reboot bootloader`
-              3. `setprop sys.powerctl reboot,bootloader`
-              4. `/system/bin/reboot bootloader`
-            - **ソースビルドは一切不要！**
+            - TWRP でそのままサイドロード可能
+            - AOSPリカバリーでは署名が必要な場合あり
