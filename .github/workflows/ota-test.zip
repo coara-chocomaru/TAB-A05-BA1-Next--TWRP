@@ -15,7 +15,6 @@ env:
   DEVICE_PATH: 'device/sts/a05ba'
   DEVICE_NAME: 'a05ba'
   MAKEFILE_NAME: 'omni_a05ba'
-  # BUILD_TARGET は廃止（代わりに updater をビルド）
 
 jobs:
   build:
@@ -185,27 +184,19 @@ jobs:
           find bootable/recovery/gui/theme/common/languages/ \
             -name "*.xml" ! -name "ja.xml" ! -name "en.xml" -delete
 
-      # ========================================================
-      # ★ ここから OTA ZIP ビルド用のステップ ★
-      # ========================================================
-
+   
       - name: Build updater binary and signapk
         working-directory: workspace
         run: |
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch ${{ env.MAKEFILE_NAME }}-eng
-
-          # updater バイナリをビルド（依存ライブラリも自動）
           make updater -j$(nproc --all)
-
-          # signapk もビルド（署名に必要）
           make signapk -j$(nproc --all)
 
       - name: Locate update-binary and prepare ZIP structure
         working-directory: workspace
         run: |
-          # update-binary の実体を探す
           UPDATER_PATH=$(find out/target/product/${{ env.DEVICE_NAME }} -name "updater" -type f -executable | head -n 1)
           if [ -z "$UPDATER_PATH" ]; then
             echo "ERROR: updater binary not found!"
@@ -213,7 +204,6 @@ jobs:
           fi
           echo "Found updater at: $UPDATER_PATH"
 
-          # ZIP のルートディレクトリ作成
           mkdir -p zip_root/META-INF/com/google/android
           cp "$UPDATER_PATH" zip_root/META-INF/com/google/android/update-binary
           chmod 755 zip_root/META-INF/com/google/android/update-binary
