@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - yoko
-  # 手動実行も可能に
   workflow_dispatch:
 
 env:
@@ -34,7 +33,7 @@ jobs:
           echo "Device Path: ${{ env.DEVICE_PATH }}"
           echo "Device Name: ${{ env.DEVICE_NAME }}"
           echo "Makefile Name: ${{ env.MAKEFILE_NAME }}"
-          echo "Build Target: updater (OTA ZIP)"
+          echo "Build Target: updater (OTA ZIP only)"
           echo "::endgroup::"
 
       - name: Check Out
@@ -98,9 +97,6 @@ jobs:
           mkdir -p workspace/${{ env.DEVICE_PATH }}
           ls | grep -v workspace | xargs -I{} mv {} workspace/${{ env.DEVICE_PATH }}
 
-      # ========================================================
-      # TWRP ソースへのパッチ（元のまま維持）
-      # ========================================================
       - name: Patch TWRP source for custom command support
         working-directory: workspace
         run: |
@@ -184,20 +180,53 @@ jobs:
           find bootable/recovery/gui/theme/common/languages/ \
             -name "*.xml" ! -name "ja.xml" ! -name "en.xml" -delete
 
-   
+      # ============================================================
+      # ★ ここが重要: install.cpp の未使用パラメータを修正（-Werror 回避）
+      # ============================================================
+      - name: Fix unused parameter errors in install.cpp
+        working-directory: workspace
+        run: |
+          cd bootable/recovery/updater
+          cp install.cpp install.cpp.bak
+
+          # do_SetMetadataRecursive の fileflags と pfwt を void キャスト
+          sed -i '/^static int do_SetMetadataRecursive.*{/a \    (void)fileflags;\n    (void)pfwt;' install.cpp
+
+          # Tune2FsFn の argv を void キャスト
+          sed -i '/^Value\* Tune2FsFn.*{/a \    (void)argv;' install.cpp
+
+          # デバッグ表示（パッチが入ったか確認）
+          echo "=== do_SetMetadataRecursive patch ==="
+          grep -A5 "static int do_SetMetadataRecursive" install.cpp | head -10
+          echo "=== Tune2FsFn patch ==="
+          grep -A5 "Value\* Tune2FsFn" install.cpp | head -10
+
+      # ============================================================
+      # ★ updater バイナリと signapk をビルド（recovery.img は作らない）
+      # ============================================================
       - name: Build updater binary and signapk
         working-directory: workspace
         run: |
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch ${{ env.MAKEFILE_NAME }}-eng
-          export TARGET_EXTRA_CXXFLAGS="-Wno-unused-parameter"
+
+          # 念のため C++ フラグも追加（保険）
+          export TARGET_EXTRA_CPPFLAGS="-Wno-unused-parameter"
+
+          # updater バイナリをビルド（依存ライブラリも自動）
           make updater -j$(nproc --all)
+
+          # signapk もビルド（署名に必要）
           make signapk -j$(nproc --all)
 
+      # ============================================================
+      # ★ update-binary を取得し、ZIP 構造を作成
+      # ============================================================
       - name: Locate update-binary and prepare ZIP structure
         working-directory: workspace
         run: |
+          # update-binary の実体を探す（out/target/product/.../system/bin/updater）
           UPDATER_PATH=$(find out/target/product/${{ env.DEVICE_NAME }} -name "updater" -type f -executable | head -n 1)
           if [ -z "$UPDATER_PATH" ]; then
             echo "ERROR: updater binary not found!"
@@ -205,10 +234,14 @@ jobs:
           fi
           echo "Found updater at: $UPDATER_PATH"
 
+          # ZIP のルートディレクトリ作成
           mkdir -p zip_root/META-INF/com/google/android
           cp "$UPDATER_PATH" zip_root/META-INF/com/google/android/update-binary
           chmod 755 zip_root/META-INF/com/google/android/update-binary
 
+      # ============================================================
+      # ★ updater-script を作成（多角的 reboot-bootloader）
+      # ============================================================
       - name: Create multi-attempt updater-script (reboot-bootloader)
         working-directory: workspace/zip_root/META-INF/com/google/android
         run: |
@@ -226,7 +259,7 @@ jobs:
           ui_print("Attempt 2: setprop sys.powerctl");
           setprop("sys.powerctl", "reboot,bootloader");
 
-          # 方法3: /sbin/reboot (TWRP に存在する場合)
+          # 方法3: /sbin/reboot (TWRP 環境に存在する場合)
           ui_print("Attempt 3: /sbin/reboot bootloader");
           run_program("/sbin/reboot", "bootloader");
 
@@ -234,12 +267,16 @@ jobs:
           ui_print("Attempt 4: /system/bin/reboot bootloader");
           run_program("/system/bin/reboot", "bootloader");
 
-          # ここに到達したら全滅
+          # ここに到達したら全滅（通常はここに来ない）
           ui_print("ERROR: All reboot methods failed!");
           EOF
 
-          cat updater-script  # デバッグ表示
+          echo "=== Generated updater-script ==="
+          cat updater-script
 
+      # ============================================================
+      # ★ 未署名 ZIP をパッケージング
+      # ============================================================
       - name: Package unsigned ZIP
         working-directory: workspace
         run: |
@@ -248,22 +285,29 @@ jobs:
           cd ..
           ls -la reboot-bootloader-unsigned.zip
 
+      # ============================================================
+      # ★ AOSP testkey で署名
+      # ============================================================
       - name: Sign ZIP with AOSP testkey
         working-directory: workspace
         run: |
-          # testkey を取得 (AOSP 標準)
+          # 1. testkey を取得（build/target または prebuilts から）
           mkdir -p keys
-          cp build/target/product/security/testkey.* keys/ || {
+          if [ -f build/target/product/security/testkey.x509.pem ] && [ -f build/target/product/security/testkey.pk8 ]; then
+            cp build/target/product/security/testkey.* keys/
+          else
             echo "testkey not found in build/target, trying prebuilts..."
             find prebuilts -name "testkey.x509.pem" -exec cp {} keys/ \;
             find prebuilts -name "testkey.pk8" -exec cp {} keys/ \;
-          }
+          fi
+
           if [ ! -f keys/testkey.x509.pem ] || [ ! -f keys/testkey.pk8 ]; then
             echo "ERROR: testkey files missing!"
             exit 1
           fi
+          echo "testkey files found."
 
-          # signapk.jar を探す
+          # 2. signapk.jar を探す
           SIGNJAR=$(find out/host -name "signapk.jar" | head -n 1)
           if [ -z "$SIGNJAR" ]; then
             echo "ERROR: signapk.jar not found!"
@@ -271,15 +315,20 @@ jobs:
           fi
           echo "Using signapk: $SIGNJAR"
 
+          # 3. 署名実行
           java -jar "$SIGNJAR" \
             keys/testkey.x509.pem \
             keys/testkey.pk8 \
             reboot-bootloader-unsigned.zip \
             reboot-bootloader-signed.zip
 
-          # 検証のため中身を表示
+          # 4. 署名済みZIPの中身を表示（検証）
+          echo "=== Signed ZIP contents ==="
           unzip -l reboot-bootloader-signed.zip | head -20
 
+      # ============================================================
+      # ★ GitHub Release にアップロード
+      # ============================================================
       - name: Upload signed OTA ZIP to Release
         uses: softprops/action-gh-release@v1
         env:
@@ -294,4 +343,10 @@ jobs:
             - デバイス: ${{ env.DEVICE_NAME }}
             - 署名: AOSP testkey
             - 動作対象: TWRP / AOSP リカバリー (サイドロード)
-            - 実行コマンド: `reboot_now` → `setprop` → `/sbin/reboot` → `/system/bin/reboot` を順に試行
+            - 実行コマンド:
+              1. `reboot_now("bootloader")` (updater内部関数)
+              2. `setprop("sys.powerctl", "reboot,bootloader")`
+              3. `/sbin/reboot bootloader`
+              4. `/system/bin/reboot bootloader`
+          draft: false
+          prerelease: false
