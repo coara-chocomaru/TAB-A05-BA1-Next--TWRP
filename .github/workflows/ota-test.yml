@@ -191,6 +191,7 @@ jobs:
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           lunch ${{ env.MAKEFILE_NAME }}-eng
+          export TARGET_EXTRA_CXXFLAGS="-Wno-unused-parameter"
           make updater -j$(nproc --all)
           make signapk -j$(nproc --all)
 
