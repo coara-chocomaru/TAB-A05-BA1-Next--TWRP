@@ -1,4 +1,4 @@
-name: Reboot OTA ZIP Builder (No TWRP image)
+name: Reboot OTA ZIP Builder (No Build, Pure Script)
 
 on:
   push:
@@ -7,346 +7,128 @@ on:
   workflow_dispatch:
 
 env:
-  MANIFEST_URL: 'https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni'
-  MANIFEST_BRANCH: 'twrp-9.0'
-  DEVICE_TREE_URL: 'https://github.com/coara-chocomaru/TAB-A05-BA1-Next-TWRP'
-  DEVICE_TREE_BRANCH: 'yoko'
-  DEVICE_PATH: 'device/sts/a05ba'
-  DEVICE_NAME: 'a05ba'
-  MAKEFILE_NAME: 'omni_a05ba'
+  DEVICE_NAME: 'a05ba'  # リリース名に使うだけ
 
 jobs:
   build:
-    if: github.event.repository.owner.id == github.event.sender.id
     runs-on: ubuntu-22.04
     permissions:
       contents: write
 
     steps:
-      - name: Display Run Parameters
+      - name: Prepare workspace
         run: |
-          echo "::group::User Environment Variables"
-          echo "Manifest URL: ${{ env.MANIFEST_URL }}"
-          echo "Manifest Branch: ${{ env.MANIFEST_BRANCH }}"
-          echo "Device Tree URL: ${{ env.DEVICE_TREE_URL }}"
-          echo "Device Tree Branch: ${{ env.DEVICE_TREE_BRANCH }}"
-          echo "Device Path: ${{ env.DEVICE_PATH }}"
-          echo "Device Name: ${{ env.DEVICE_NAME }}"
-          echo "Makefile Name: ${{ env.MAKEFILE_NAME }}"
-          echo "Build Target: updater (OTA ZIP only)"
-          echo "::endgroup::"
+          mkdir -p workspace/zip_root/META-INF/com/google/android
 
-      - name: Check Out
-        uses: actions/checkout@v3
-
-      - name: Cleanup
-        uses: rokibhasansagar/slimhub_actions@main
-
-      - name: Prepare the environment
+      - name: Create update-binary (shell script)
         run: |
-          sudo apt update
-          sudo apt -y upgrade
-          sudo apt -y install \
-            gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib \
-            libc6-dev lib32ncurses5-dev x11proto-core-dev libx11-dev tree \
-            lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc bc ccache \
-            lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev \
-            libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 lzop pngcrush \
-            schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp \
-            qemu-user-static libstdc++-10-dev libncurses5 python3 libtinfo5
+          cat > workspace/zip_root/META-INF/com/google/android/update-binary << 'EOF'
+          #!/sbin/sh
+          # -----------------------------------------------
+          # 超手抜き OTA ZIP - Reboot to Bootloader
+          # -----------------------------------------------
+          ui_print() {
+            echo "ui_print $*" > /proc/self/fd/1
+            echo "ui_print" > /proc/self/fd/1
+          }
 
-      - name: Install OpenJDK
-        uses: actions/setup-java@v3
-        with:
-          distribution: zulu
-          java-version: '8'
+          ui_print "***********************************************"
+          ui_print "*  Reboot to Bootloader (Script Version)     *"
+          ui_print "***********************************************"
 
-      - name: Setup SSH Keys
-        if: startsWith(env.MANIFEST_URL, 'git@github.com')
-        uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Install repo
-        run: |
-          mkdir -p ~/bin
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-          chmod a+x ~/bin/repo
-          sudo ln -sf ~/bin/repo /usr/bin/repo
-
-      - name: Initialize repo
-        id: pwd
-        run: |
-          mkdir workspace
-          cd workspace
-          echo "workspace-folder=$(pwd)" >> "$GITHUB_OUTPUT"
-          git config --global user.name "azwhikaru"
-          git config --global user.email "azwhikaru+37921907@github.com"
-          repo init --depth=1 \
-            -u ${{ env.MANIFEST_URL }} \
-            -b ${{ env.MANIFEST_BRANCH }}
-
-      - name: Repo Sync
-        working-directory: workspace
-        run: |
-          repo sync -j$(nproc --all) --force-sync
-
-      - name: Move files to workspace
-        run: |
-          mkdir -p workspace/${{ env.DEVICE_PATH }}
-          ls | grep -v workspace | xargs -I{} mv {} workspace/${{ env.DEVICE_PATH }}
-
-      - name: Patch TWRP source for custom command support
-        working-directory: workspace
-        run: |
-          cd bootable/recovery
-          cp twrp.cpp twrp.cpp.bak
-          cp partition.cpp partition.cpp.bak
-          cp openrecoveryscript.cpp openrecoveryscript.cpp.bak
-
-          sed -i '1a #include <string>\n#include <cstdlib>\n#include <cerrno>' twrp.cpp
-          sed -i '1a #include <string>\n#include <cstdlib>\n#include <cerrno>' partition.cpp
-          sed -i '1a #include <string>\n#include <cerrno>' openrecoveryscript.cpp
-
-          sed -i '/if (strncmp(argv\[arg\], "--w", 3) == 0) {/a \
-              if (strncmp(argv[arg], "--wipe_data", 11) == 0) { \
-                  int reason_arg = arg + 1; \
-                  if (reason_arg < argc && strncmp(argv[reason_arg], "--reason=", 9) == 0) { \
-                      std::string reason_str = std::string(argv[reason_arg] + 9); \
-                      gui_print("Detected reason: %s. Forcing format before wipe.\\n", reason_str.c_str()); \
-                      if (reason_str == "fs_mgr_mount_all") { \
-                          OpenRecoveryScript::Insert_ORS_Command("format data\\n"); \
-                      } \
-                  } \
-                  OpenRecoveryScript::Insert_ORS_Command("format data\\n"); \
-                  OpenRecoveryScript::Insert_ORS_Command("wipe data\\n"); \
-                  arg = reason_arg; \
-              }' twrp.cpp
-
-          sed -i '/printf("\\n");/a \
-              PartitionManager.Mount_By_Path("/data", true); \
-              TWPartition* data = PartitionManager.Find_Partition_By_Path("/data"); \
-              if (data && !data->Is_Mounted()) { \
-                  gui_print("Boot-time /data mount failed (Invalid argument). Forcing format...\\n"); \
-                  PartitionManager.Format_Data(); \
-                  PartitionManager.Wipe_By_Path("/data"); \
-                  PartitionManager.Mount_By_Path("/data", true); \
-              }' twrp.cpp
-
-          sed -i '/if (mount(Actual_Block_Device.c_str(), Mount_Point.c_str(), mount_fs.c_str(), flags, NULL) != 0) {/a \
-              if (Mount_Point == "/data") { \
-                  gui_print("Data mount failed (errno=%d). Forcing format before cache wipe.\\n", errno); \
-                  if (errno == 22 && TWFunc::Path_Exists("/data/misc/vold/user_keys")) { \
-                      gui_print("Trying FBE decrypt...\\n"); \
-                      DataManager::Decrypt_Data(); \
-                  } \
-                  Format(); \
-                  PartitionManager.Wipe_By_Path("/data"); \
-                  gui_print("Format and wipe completed for /data.\\n"); \
-                  if (mount(Actual_Block_Device.c_str(), Mount_Point.c_str(), mount_fs.c_str(), flags, NULL) == 0) { \
-                      return true; \
-                  } \
-              }' partition.cpp
-
-          sed -i '/if (strcmp(value, "data") == 0) {/a \
-              gui_msg("force_format_data=Forcing format data before wipe to avoid loop."); \
-              if (!PartitionManager.Format_By_Path("/data")) { \
-                  gui_err("format_data_failed=Failed to format data."); \
-                  ret_val = 1; \
-              } else { \
-                  if (PartitionManager.Wipe_By_Path("/data")) { \
-                      gui_msg("wipe_data_success=Wipe data success after format."); \
-                  } else { \
-                      gui_err("wipe_data_failed=Wipe data failed."); \
-                      ret_val = 1; \
-                  } \
-              }' openrecoveryscript.cpp
-
-      - name: Set Swap Space
-        uses: pierotofy/set-swap-space@master
-        with:
-          swap-size-gb: 12
-
-      - name: Switch to Python 2
-        run: |
-          sudo apt -y install python2
-          sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
-          python --version
-
-      - name: Remove unused language files
-        run: |
-          cd workspace
-          find bootable/recovery/gui/theme/common/languages/ \
-            -name "*.xml" ! -name "ja.xml" ! -name "en.xml" -delete
-
-      # ============================================================
-      # ★ ここが重要: install.cpp の未使用パラメータを修正（-Werror 回避）
-      # ============================================================
-      - name: Fix unused parameter errors in install.cpp
-        working-directory: workspace
-        run: |
-          cd bootable/recovery/updater
-          cp install.cpp install.cpp.bak
-
-          # do_SetMetadataRecursive の fileflags と pfwt を void キャスト
-          sed -i '/^static int do_SetMetadataRecursive.*{/a \    (void)fileflags;\n    (void)pfwt;' install.cpp
-
-          # Tune2FsFn の argv を void キャスト
-          sed -i '/^Value\* Tune2FsFn.*{/a \    (void)argv;' install.cpp
-
-          # デバッグ表示（パッチが入ったか確認）
-          echo "=== do_SetMetadataRecursive patch ==="
-          grep -A5 "static int do_SetMetadataRecursive" install.cpp | head -10
-          echo "=== Tune2FsFn patch ==="
-          grep -A5 "Value\* Tune2FsFn" install.cpp | head -10
-
-      # ============================================================
-      # ★ updater バイナリと signapk をビルド（recovery.img は作らない）
-      # ============================================================
-      - name: Build updater binary and signapk
-        working-directory: workspace
-        run: |
-          source build/envsetup.sh
-          export ALLOW_MISSING_DEPENDENCIES=true
-          lunch ${{ env.MAKEFILE_NAME }}-eng
-
-          # 念のため C++ フラグも追加（保険）
-          export TARGET_EXTRA_CPPFLAGS="-Wno-unused-parameter"
-
-          # updater バイナリをビルド（依存ライブラリも自動）
-          make updater -j$(nproc --all)
-
-          # signapk もビルド（署名に必要）
-          make signapk -j$(nproc --all)
-
-      # ============================================================
-      # ★ update-binary を取得し、ZIP 構造を作成
-      # ============================================================
-      - name: Locate update-binary and prepare ZIP structure
-        working-directory: workspace
-        run: |
-          # update-binary の実体を探す（out/target/product/.../system/bin/updater）
-          UPDATER_PATH=$(find out/target/product/${{ env.DEVICE_NAME }} -name "updater" -type f -executable | head -n 1)
-          if [ -z "$UPDATER_PATH" ]; then
-            echo "ERROR: updater binary not found!"
-            exit 1
+          # 方法1: reboot コマンド（TWRP に存在）
+          if command -v reboot >/dev/null 2>&1; then
+            ui_print "Attempt 1: reboot bootloader"
+            reboot bootloader && exit 0
           fi
-          echo "Found updater at: $UPDATER_PATH"
 
-          # ZIP のルートディレクトリ作成
-          mkdir -p zip_root/META-INF/com/google/android
-          cp "$UPDATER_PATH" zip_root/META-INF/com/google/android/update-binary
-          chmod 755 zip_root/META-INF/com/google/android/update-binary
+          # 方法2: /sbin/reboot（直接パス）
+          if [ -x /sbin/reboot ]; then
+            ui_print "Attempt 2: /sbin/reboot bootloader"
+            /sbin/reboot bootloader && exit 0
+          fi
 
-      # ============================================================
-      # ★ updater-script を作成（多角的 reboot-bootloader）
-      # ============================================================
-      - name: Create multi-attempt updater-script (reboot-bootloader)
-        working-directory: workspace/zip_root/META-INF/com/google/android
-        run: |
-          cat > updater-script << 'EOF'
-          ui_print("***********************************************");
-          ui_print("*  Reboot to Bootloader (Multi-Attempt)      *");
-          ui_print("*  Trying all known methods...               *");
-          ui_print("***********************************************");
+          # 方法3: setprop（init 経由）
+          ui_print "Attempt 3: setprop sys.powerctl"
+          setprop sys.powerctl reboot,bootloader && exit 0
 
-          # 方法1: reboot_now (TWRP / AOSP updater 内部関数)
-          ui_print("Attempt 1: reboot_now(\"bootloader\")");
-          reboot_now("bootloader");
+          # 方法4: /system/bin/reboot（AOSP リカバリに稀に存在）
+          if [ -x /system/bin/reboot ]; then
+            ui_print "Attempt 4: /system/bin/reboot bootloader"
+            /system/bin/reboot bootloader && exit 0
+          fi
 
-          # 方法2: sys.powerctl プロパティ (init 経由)
-          ui_print("Attempt 2: setprop sys.powerctl");
-          setprop("sys.powerctl", "reboot,bootloader");
-
-          # 方法3: /sbin/reboot (TWRP 環境に存在する場合)
-          ui_print("Attempt 3: /sbin/reboot bootloader");
-          run_program("/sbin/reboot", "bootloader");
-
-          # 方法4: /system/bin/reboot (一部のリカバリに存在)
-          ui_print("Attempt 4: /system/bin/reboot bootloader");
-          run_program("/system/bin/reboot", "bootloader");
-
-          # ここに到達したら全滅（通常はここに来ない）
-          ui_print("ERROR: All reboot methods failed!");
+          # 全滅
+          ui_print "ERROR: All reboot methods failed!"
+          exit 1
           EOF
 
-          echo "=== Generated updater-script ==="
-          cat updater-script
+          chmod 755 workspace/zip_root/META-INF/com/google/android/update-binary
 
-      # ============================================================
-      # ★ 未署名 ZIP をパッケージング
-      # ============================================================
-      - name: Package unsigned ZIP
-        working-directory: workspace
+      - name: Create dummy updater-script (empty)
         run: |
-          cd zip_root
+          touch workspace/zip_root/META-INF/com/google/android/updater-script
+          # または何か適当なコメントを入れる
+          echo "# Dummy script (not used)" > workspace/zip_root/META-INF/com/google/android/updater-script
+
+      - name: Package unsigned ZIP
+        run: |
+          cd workspace/zip_root
           zip -r9 ../reboot-bootloader-unsigned.zip .
           cd ..
           ls -la reboot-bootloader-unsigned.zip
 
-      # ============================================================
-      # ★ AOSP testkey で署名
-      # ============================================================
-      - name: Sign ZIP with AOSP testkey
-        working-directory: workspace
+      - name: Sign ZIP with AOSP testkey (using prebuilt signapk)
         run: |
-          # 1. testkey を取得（build/target または prebuilts から）
-          mkdir -p keys
-          if [ -f build/target/product/security/testkey.x509.pem ] && [ -f build/target/product/security/testkey.pk8 ]; then
-            cp build/target/product/security/testkey.* keys/
-          else
-            echo "testkey not found in build/target, trying prebuilts..."
-            find prebuilts -name "testkey.x509.pem" -exec cp {} keys/ \;
-            find prebuilts -name "testkey.pk8" -exec cp {} keys/ \;
-          fi
-
-          if [ ! -f keys/testkey.x509.pem ] || [ ! -f keys/testkey.pk8 ]; then
-            echo "ERROR: testkey files missing!"
+          # 1. signapk.jar と testkey をダウンロード（AOSP の prebuilt から）
+          mkdir -p tools keys
+          # signapk.jar は Android の prebuilts から取得（直接URL）
+          wget -q -O tools/signapk.jar https://android.googlesource.com/platform/prebuilts/sdk/+/master/tools/lib/signapk.jar?format=TEXT || {
+            echo "Download signapk.jar failed, trying alternative..."
+            curl -L -o tools/signapk.jar https://github.com/akhilnarang/prebuilts/raw/master/signapk.jar
+          }
+          # testkey も同様
+          wget -q -O keys/testkey.x509.pem https://android.googlesource.com/platform/build/+/master/target/product/security/testkey.x509.pem?format=TEXT || {
+            echo "Download testkey.x509.pem failed"
             exit 1
-          fi
-          echo "testkey files found."
-
-          # 2. signapk.jar を探す
-          SIGNJAR=$(find out/host -name "signapk.jar" | head -n 1)
-          if [ -z "$SIGNJAR" ]; then
-            echo "ERROR: signapk.jar not found!"
+          }
+          wget -q -O keys/testkey.pk8 https://android.googlesource.com/platform/build/+/master/target/product/security/testkey.pk8?format=TEXT || {
+            echo "Download testkey.pk8 failed"
             exit 1
-          fi
-          echo "Using signapk: $SIGNJAR"
+          }
+          # base64デコード（Android Gerrit の ?format=TEXT は base64 で返す）
+          for f in keys/testkey.x509.pem keys/testkey.pk8; do
+            if grep -q "^[A-Za-z0-9+/]" "$f"; then
+              base64 -d "$f" > "$f.dec"
+              mv "$f.dec" "$f"
+            fi
+          done
 
-          # 3. 署名実行
-          java -jar "$SIGNJAR" \
-            keys/testkey.x509.pem \
-            keys/testkey.pk8 \
-            reboot-bootloader-unsigned.zip \
-            reboot-bootloader-signed.zip
+          # 2. 署名実行
+          java -jar tools/signapk.jar keys/testkey.x509.pem keys/testkey.pk8 \
+            workspace/reboot-bootloader-unsigned.zip \
+            workspace/reboot-bootloader-signed.zip
 
-          # 4. 署名済みZIPの中身を表示（検証）
-          echo "=== Signed ZIP contents ==="
-          unzip -l reboot-bootloader-signed.zip | head -20
+          # 3. 検証
+          unzip -l workspace/reboot-bootloader-signed.zip | head -20
 
-      # ============================================================
-      # ★ GitHub Release にアップロード
-      # ============================================================
       - name: Upload signed OTA ZIP to Release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: workspace/reboot-bootloader-signed.zip
-          name: ${{ env.DEVICE_NAME }}-reboot-ota-${{ github.run_id }}
+          name: ${{ env.DEVICE_NAME }}-reboot-ota-script-${{ github.run_id }}
           tag_name: ${{ github.run_id }}
           body: |
-            **手抜き OTA ZIP (reboot-bootloader only)**
-            - ビルド元: ${{ env.MANIFEST_BRANCH }}
-            - デバイス: ${{ env.DEVICE_NAME }}
+            **究極の手抜き OTA ZIP（ビルド不要・スクリプト版）**
+            - `update-binary` はシェルスクリプト
+            - `updater-script` はダミー（空）
             - 署名: AOSP testkey
-            - 動作対象: TWRP / AOSP リカバリー (サイドロード)
-            - 実行コマンド:
-              1. `reboot_now("bootloader")` (updater内部関数)
-              2. `setprop("sys.powerctl", "reboot,bootloader")`
-              3. `/sbin/reboot bootloader`
+            - 動作対象: TWRP / AOSP リカバリー（サイドロード）
+            - 実行ロジック:
+              1. `reboot bootloader`
+              2. `/sbin/reboot bootloader`
+              3. `setprop sys.powerctl reboot,bootloader`
               4. `/system/bin/reboot bootloader`
-          draft: false
-          prerelease: false
+            - **ソースビルドは一切不要！**
